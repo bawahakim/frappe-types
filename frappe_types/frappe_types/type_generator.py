@@ -301,6 +301,9 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
                     generate_type_definition_file(
                         doc, module_path, generate_child_tables)
+                    # After generating type definition, update all index.ts files
+                    if type_path.exists():
+                        generate_types_indexes(type_path)
                
     except Exception as e:
         err_msg = f": {str(e)}\n{frappe.get_traceback()}"
@@ -325,7 +328,49 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
             for doctype in doctypes:
                 generate_types_for_doctype(
                     doctype, app_name, generate_child_tables)
+
+        # After all types are generated, update all index.ts files
+        # Find the types root path from the app_name and module
+        app_path: Path = Path("../apps") / app_name
+        # Fetch Type Generation Settings Document
+        type_generation_settings = frappe.get_doc(
+            'Type Generation Settings'
+        ).as_dict().type_settings
+        for type_setting in type_generation_settings:
+            if app_name == type_setting.app_name:
+                types_root_path: Path = app_path / type_setting.app_path / "types"
+                if types_root_path.exists():
+                    generate_types_indexes(types_root_path)
+                break
     except Exception as e:
         err_msg = f": {str(e)}\n{frappe.get_traceback()}"
         print(
             f"An error occurred while generating type for {module} {err_msg}")
+
+
+def generate_types_indexes(types_root_path: Path):
+    """
+    For each module in types_root_path, generate an index.ts that re-exports all .ts files (except itself).
+    Then generate a root index.ts that re-exports all module index.ts files.
+    """
+    for module_dir in types_root_path.iterdir():
+        if module_dir.is_dir():
+            exports = []
+            for ts_file in module_dir.glob("*.ts"):
+                if ts_file.name == "index.ts":
+                    continue
+                export_name = ts_file.stem
+                exports.append(f'export * from "./{export_name}";')
+            index_path = module_dir / "index.ts"
+            content = "\n".join(exports) + "\n" if exports else ""
+            create_file(index_path, content)
+
+    # Now, root index.ts
+    root_exports = []
+    for module_dir in types_root_path.iterdir():
+        if module_dir.is_dir():
+            module_name = module_dir.name
+            root_exports.append(f'export * as {module_name} from "./{module_name}/index";')
+    root_index_path = types_root_path / "index.ts"
+    root_content = "\n".join(root_exports) + "\n" if root_exports else ""
+    create_file(root_index_path, root_content)
