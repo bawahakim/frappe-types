@@ -301,6 +301,18 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
                     generate_type_definition_file(
                         doc, module_path, generate_child_tables)
+
+                    # After generating the type, update DoctypeMap for the app
+                    # Scan all .ts files in this module directory
+                    doctypes_info = []
+                    for ts_file in module_path.glob("*.ts"):
+                        if ts_file.name == "index.ts":
+                            continue
+                        ts_type = ts_file.stem
+                        doctype_name = ts_type.replace("_", " ")
+                        doctypes_info.append((doctype_name, ts_type, f'./{module_name.replace(" ","")}/{ts_type}'))
+                    doctypes_info.sort(key=lambda x: x[0].lower())
+                    write_doctype_map(app_name, doctypes_info)
                
     except Exception as e:
         err_msg = f": {str(e)}\n{frappe.get_traceback()}"
