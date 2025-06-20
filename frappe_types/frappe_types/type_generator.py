@@ -303,13 +303,15 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
                         doc, module_path, generate_child_tables)
 
                     # After generating the type, update DoctypeMap for the app
-                    # Scan all .ts files in this module directory
+                    # Scan all .ts files in this module directory and match to real DocType names
                     doctypes_info = []
+                    # Get all doctypes in this module
+                    module_doctypes = {d['name'].replace(' ', ''): d['name'] for d in frappe.get_all('DocType', filters={'module': module_name}, fields=['name'])}
                     for ts_file in module_path.glob("*.ts"):
                         if ts_file.name == "index.ts":
                             continue
                         ts_type = ts_file.stem
-                        doctype_name = ts_type.replace("_", " ")
+                        doctype_name = module_doctypes.get(ts_type, ts_type)
                         doctypes_info.append((doctype_name, ts_type, f'./{module_name.replace(" ","")}/{ts_type}'))
                     doctypes_info.sort(key=lambda x: x[0].lower())
                     write_doctype_map(app_name, doctypes_info)
@@ -355,11 +357,11 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
 
 def write_doctype_map(app_name, doctypes_info):
     """Write the DoctypeMap.ts file for the given app, using the provided doctypes_info list."""
-    from .utils import create_file
-    from pathlib import Path
+    
     import_lines = [f'import {{ {ts_type} }} from "{import_path}";' for _, ts_type, import_path in doctypes_info]
     map_lines = [f'  "{doctype_name}": {ts_type};' for doctype_name, ts_type, _ in doctypes_info]
     content = "// Auto-generated. Do not edit.\n" + "\n".join(import_lines) + "\n\nexport type DoctypeMap = {\n" + "\n".join(map_lines) + "\n};\n"
+    
     # Find the types directory
     type_generation_settings = frappe.get_doc('Type Generation Settings').as_dict().type_settings
     app_path = Path("../apps") / app_name
