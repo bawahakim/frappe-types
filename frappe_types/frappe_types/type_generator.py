@@ -334,25 +334,31 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
 
         # Write DoctypeMap.ts in the app's types folder
         if doctypes_info:
-            # Find the types directory for this module/app
-            type_generation_settings = frappe.get_doc('Type Generation Settings').as_dict().type_settings
-            app_path = Path("../apps") / app_name
-            module_path = None
-            for type_setting in type_generation_settings:
-                if app_name == type_setting.app_name:
-                    type_path = app_path / type_setting.app_path / "types"
-                    if type_path.exists():
-                        module_path = type_path
-                        break
-            if module_path:
-                map_file_path = module_path / "DoctypeMap.ts"
-                # Compose imports and map
-                import_lines = [f'import {{ {ts_type} }} from "{import_path}";' for _, ts_type, import_path in doctypes_info]
-                map_lines = [f'  "{doctype_name}": {ts_type};' for doctype_name, ts_type, _ in doctypes_info]
-                content = "// Auto-generated. Do not edit.\n" + "\n".join(import_lines) + "\n\nexport type DoctypeMap = {\n" + "\n".join(map_lines) + "\n};\n"
-                from .utils import create_file
-                create_file(map_file_path, content)
+            write_doctype_map(app_name, doctypes_info)
     except Exception as e:
         err_msg = f": {str(e)}\n{frappe.get_traceback()}"
         print(
             f"An error occurred while generating type for {module} {err_msg}")
+
+
+def write_doctype_map(app_name, doctypes_info):
+    """Write the DoctypeMap.ts file for the given app, using the provided doctypes_info list."""
+    from .utils import create_file
+    from pathlib import Path
+    import_lines = [f'import {{ {ts_type} }} from "{import_path}";' for _, ts_type, import_path in doctypes_info]
+    map_lines = [f'  "{doctype_name}": {ts_type};' for doctype_name, ts_type, _ in doctypes_info]
+    content = "// Auto-generated. Do not edit.\n" + "\n".join(import_lines) + "\n\nexport type DoctypeMap = {\n" + "\n".join(map_lines) + "\n};\n"
+    # Find the types directory
+    type_generation_settings = frappe.get_doc('Type Generation Settings').as_dict().type_settings
+    app_path = Path("../apps") / app_name
+    module_path = None
+    for type_setting in type_generation_settings:
+        if app_name == type_setting.app_name:
+            type_path = app_path / type_setting.app_path / "types"
+            if type_path.exists():
+                module_path = type_path
+                break
+    if module_path:
+        map_file_path = module_path / "DoctypeMap.ts"
+        create_file(map_file_path, content)
+
