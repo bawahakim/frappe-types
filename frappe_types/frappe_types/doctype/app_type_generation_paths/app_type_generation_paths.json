@@ -23,6 +23,13 @@
    "in_list_view": 1,
    "label": "App Path",
    "reqd": 1
+  },
+  {
+   "fieldname": "generate_indexes",
+   "fieldtype": "Check",
+   "label": "Generate Index Files",
+   "default": 1,
+   "description": "Enable to auto-generate TypeScript index.ts files for modules and root."
   }
  ],
  "index_web_pages_for_search": 1,

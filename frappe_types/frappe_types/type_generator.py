@@ -254,8 +254,7 @@ def after_migrate():
 
 
 @frappe.whitelist()
-def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, custom_fields=False):
-
+def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, custom_fields=False, generate_indexes=None):
     try:
         # custom_fields True means that the generate .ts file for custom fields with original fields
         doc = frappe.get_meta(doctype) if custom_fields else frappe.get_doc(
@@ -301,8 +300,13 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
                     generate_type_definition_file(
                         doc, module_path, generate_child_tables)
-                    # After generating type definition, update all index.ts files
-                    if type_path.exists():
+                    # After generating type definition, update all index.ts files if enabled
+                    enabled = None
+                    if generate_indexes is not None:
+                        enabled = generate_indexes
+                    else:
+                        enabled = type_setting.get('generate_indexes', 1) in (1, True, '1')
+                    if enabled and type_path.exists():
                         generate_types_indexes(type_path)
                
     except Exception as e:
@@ -312,7 +316,8 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
 
 @frappe.whitelist()
-def generate_types_for_module(module, app_name, generate_child_tables=False):
+def generate_types_for_module(module, app_name, generate_child_tables=False, generate_indexes=None):
+    print("Generating types for module: " + module)
     try:
         child_tables = [doctype['name'] for doctype in frappe.get_list(
             'DocType', filters={'module': module, 'istable': 1})]
@@ -327,9 +332,9 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
         if len(doctypes) > 0:
             for doctype in doctypes:
                 generate_types_for_doctype(
-                    doctype, app_name, generate_child_tables)
+                    doctype, app_name, generate_child_tables, False, generate_indexes)
 
-        # After all types are generated, update all index.ts files
+        # After all types are generated, update all index.ts files if enabled
         # Find the types root path from the app_name and module
         app_path: Path = Path("../apps") / app_name
         # Fetch Type Generation Settings Document
@@ -338,8 +343,13 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
         ).as_dict().type_settings
         for type_setting in type_generation_settings:
             if app_name == type_setting.app_name:
+                enabled = None
+                if generate_indexes is not None:
+                    enabled = generate_indexes
+                else:
+                    enabled = type_setting.get('generate_indexes', 1) in (1, True, '1')
                 types_root_path: Path = app_path / type_setting.app_path / "types"
-                if types_root_path.exists():
+                if enabled and types_root_path.exists():
                     generate_types_indexes(types_root_path)
                 break
     except Exception as e:

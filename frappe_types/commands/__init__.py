@@ -21,8 +21,13 @@ import frappe
     prompt="Do you want to generate types for custom fields too if exists?",
     help="It will generate Types for custom fields includes in the doctype",
 )
+@click.option(
+    "--generate-indexes/--no-generate-indexes",
+    default=None,
+    help="Enable or disable auto-generation of TypeScript index.ts files. Overrides settings doctype if set."
+)
 @pass_context
-def generate_types_file_from_doctype(context, app, doctype, generate_child_tables, custom_fields):
+def generate_types_file_from_doctype(context, app, doctype, generate_child_tables, custom_fields, generate_indexes):
     """Generate types file from doctype"""
     if not app:
         click.echo("Please provide an app with --app")
@@ -33,7 +38,7 @@ def generate_types_file_from_doctype(context, app, doctype, generate_child_table
         frappe.connect(site=site)
         try:
             generate_types_for_doctype(
-                doctype, app, generate_child_tables, custom_fields)
+                doctype, app, generate_child_tables, custom_fields, generate_indexes)
         finally:
             frappe.destroy()
     if not context.sites:
@@ -44,8 +49,13 @@ def generate_types_file_from_doctype(context, app, doctype, generate_child_table
 @click.option("--app", prompt="App Name")
 @click.option("--module", prompt="Module Name")
 @click.option('--generate_child_tables', default=False, is_flag=True, prompt='Do you want to generate types for child tables too?', help='It will generate Types for child tables includes in the doctype')
+@click.option(
+    "--generate-indexes/--no-generate-indexes",
+    default=None,
+    help="Enable or disable auto-generation of TypeScript index.ts files. Overrides settings doctype if set."
+)
 @pass_context
-def generate_types_file_from_module(context, app, module, generate_child_tables):
+def generate_types_file_from_module(context, app, module, generate_child_tables, generate_indexes):
     """Generate types file from module"""
     if not app:
         click.echo("Please provide an app with --app")
@@ -55,7 +65,7 @@ def generate_types_file_from_module(context, app, module, generate_child_tables)
     for site in context.sites:
         frappe.connect(site=site)
         try:
-            generate_types_for_module(module, app, generate_child_tables)
+            generate_types_for_module(module, app, generate_child_tables, generate_indexes)
         finally:
             frappe.destroy()
     if not context.sites:
