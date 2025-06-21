@@ -82,6 +82,11 @@ class TypeGenerator:
 
         if not self._can_generate(doctype):
             return
+        
+        # Ignore core apps
+        if self.app_name in {"frappe", "erpnext"}:
+            print("Ignoring core app DocTypes")
+            return
 
         print("Generating type definition file for " + doctype.name)
         module_name = doctype.module
@@ -123,10 +128,6 @@ class TypeGenerator:
         missing directories along the way.  Returns *None* when the DocType
         should be ignored (e.g. core apps, unconfigured app, or missing app
         path)."""
-        # Ignore core apps
-        if app_name in {"frappe", "erpnext"}:
-            print("Ignoring core app DocTypes")
-            return None
 
         app_path = Path("../apps") / app_name
         if not app_path.exists():
