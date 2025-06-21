@@ -57,7 +57,7 @@ class TypeGenerator:
 				self._generate_type_definition_file(doc, module_path)
 
 		except Exception as e:
-			err_msg = f": {str(e)}\n{frappe.get_traceback()}"
+			err_msg = f": {e!s}\n{frappe.get_traceback()}"
 			print(f"An error occurred while generating type for {doctype} {err_msg}")
 
 	def generate_module(self, module: str):
@@ -80,7 +80,7 @@ class TypeGenerator:
 				for doctype in doctypes:
 					self.generate_doctype(doctype)
 		except Exception as e:
-			err_msg = f": {str(e)}\n{frappe.get_traceback()}"
+			err_msg = f": {e!s}\n{frappe.get_traceback()}"
 			print(f"An error occurred while generating type for {module} {err_msg}")
 
 	def update_type_definition_file(self, doctype: DocType):
@@ -138,7 +138,7 @@ class TypeGenerator:
 		is_paused_config = frappe.get_conf().get("frappe_types_pause_generation", 0)
 		return bool(is_paused_config)
 
-	def _get_module_path(self, app_name: str, module_name: str) -> Optional[Path]:
+	def _get_module_path(self, app_name: str, module_name: str) -> Path | None:
 		"""Return the directory `<app>/<custom path>/types/<Module>` creating any
 		missing directories along the way.  Returns *None* when the DocType
 		should be ignored (e.g. core apps, unconfigured app, or missing app

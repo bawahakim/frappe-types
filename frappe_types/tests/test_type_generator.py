@@ -34,7 +34,7 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types")
 
 		generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
-		with open(TestTypeGeneratorUtils.get_types_output_path(), "r") as f:
+		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -45,7 +45,7 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types", generate_child_tables=True)
 
 		generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
-		with open(TestTypeGeneratorUtils.get_types_output_path(), "r") as f:
+		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -56,7 +56,7 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types")
 
 		generator.generate_module(TestTypeGeneratorUtils.module)
-		with open(TestTypeGeneratorUtils.get_types_output_path(), "r") as f:
+		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -75,7 +75,7 @@ class TestTypeGenerator(FrappeTestCase):
 		)
 		doc.save()
 
-		with open(TestTypeGeneratorUtils.get_types_output_path(), "r") as f:
+		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),

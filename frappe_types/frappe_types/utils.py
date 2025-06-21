@@ -3,7 +3,7 @@ from pathlib import Path
 import frappe
 
 
-def create_file(path: Path, content: str = None):
+def create_file(path: Path, content: str | None = None):
 	# Create the file if not exists
 	if not path.exists():
 		path.touch()
