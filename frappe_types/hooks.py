@@ -107,9 +107,7 @@ after_migrate = "frappe_types.frappe_types.type_generator.after_migrate"
 
 
 doc_events = {
-    "DocType": {
-        "on_update": "frappe_types.frappe_types.type_generator.create_type_definition_file"
-    }
+	"DocType": {"on_update": "frappe_types.frappe_types.type_generator.create_type_definition_file"}
 }
 
 # Scheduled Tasks
