@@ -29,14 +29,14 @@ class TestTypeGenerator(FrappeTestCase):
         doctype.is_virtual = 0
 
         dataField = {
-                    "fieldname": "field_1",
+                    "fieldname": "data_field",
                     "fieldtype": "Data",
-                    "label": "Field 1",
+                    "label": "Data Field",
                 }
         intField = {
-                    "fieldname": "field_2",
+                    "fieldname": "int_field",
                     "fieldtype": "Int",
-                    "label": "Field 2",
+                    "label": "Int Field",
                 }
         doctype.append("fields", dataField)
         doctype.append("fields", intField)
@@ -70,7 +70,7 @@ class TestTypeGenerator(FrappeTestCase):
 
     def test_updates_types(self):
         doc = frappe.get_doc("DocType", self.test_doctype_name)
-        doc.append("fields", {"fieldname": "field_3", "fieldtype": "Data", "label": "Field 3"})
+        doc.append("fields", {"fieldname": "data_field_new", "fieldtype": "Data", "label": "Data Field New"})
         doc.save()
 
         with open(types_output_path, "r") as f:
@@ -104,15 +104,15 @@ export interface TestGeneratedDocType{{
 """
 
 default_fields = """\
-	/**	Field 1 : Data	*/
-	field_1?: string
-	/**	Field 2 : Int	*/
-	field_2?: number
+	/**	Data Field : Data	*/
+	data_field?: string
+	/**	Int Field : Int	*/
+	int_field?: number
 """
 
 updated_fields = """\
-	/**	Field 3 : Data	*/
-	field_3?: string
+	/**	Data Field New : Data	*/
+	data_field_new?: string
 """
 
 def sanitize_content(text: str) -> str:
