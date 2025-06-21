@@ -13,7 +13,7 @@ class TestTypeGenerator(FrappeTestCase):
     test_doctype_name = "Test Generated DocType"
 
     def tearDown(self) -> None:
-        shutil.rmtree(types_base_path)
+        shutil.rmtree(types_base_path, ignore_errors=True)
         return super().tearDown()
 
     @classmethod
@@ -54,7 +54,7 @@ class TestTypeGenerator(FrappeTestCase):
         generator.generate_doctype(self.test_doctype_name)
         with open(types_output_path, "r") as f:
             content = f.read()
-            self.assertEqual(content.rstrip(), expected_ts_file.rstrip())
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields))
     
     def test_generate_types_for_module(self):
         generator = TypeGenerator(app_name="frappe_types")
@@ -62,11 +62,20 @@ class TestTypeGenerator(FrappeTestCase):
         generator.generate_module(module)
         with open(types_output_path, "r") as f:
             content = f.read()
-            self.assertEqual(content.rstrip(), expected_ts_file.rstrip())
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields))
 
-expected_ts_file = """\
+    def test_updates_types(self):
+        doc = frappe.get_doc("DocType", self.test_doctype_name)
+        doc.append("fields", {"fieldname": "field_3", "fieldtype": "Data", "label": "Field 3"})
+        doc.save()
 
-export interface TestGeneratedDocType{
+        with open(types_output_path, "r") as f:
+            content = f.read()
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields, updated_fields))
+
+
+expected_template = """\
+export interface TestGeneratedDocType{{
 	name: string
 	creation: string
 	modified: string
@@ -77,9 +86,39 @@ export interface TestGeneratedDocType{
 	parentfield?: string
 	parenttype?: string
 	idx?: number
+{fields}
+}}
+"""
+
+default_fields = """\
 	/**	Field 1 : Data	*/
 	field_1?: string
 	/**	Field 2 : Int	*/
 	field_2?: number
-}
 """
+
+updated_fields = """\
+	/**	Field 3 : Data	*/
+	field_3?: string
+"""
+
+def sanitize_content(text: str) -> str:
+    tabsize = 4
+    spaces = " " * tabsize
+    cleaned_lines = [
+        # tabs → spaces, trim right-side blanks
+        line.replace("\t", spaces).rstrip()          
+        for line in text.splitlines()
+        # drop empty / whitespace-only lines
+        if line.strip()                             
+    ]
+    return "\n".join(cleaned_lines).rstrip()
+
+def normalize_ts_content(s: str) -> list[str]:
+    # Remove leading/trailing whitespace from each line
+    return [line.strip() for line in s.strip().splitlines()]
+
+def get_expected_ts_file(*fields: str) -> str:
+    concatenated_fields = "\n".join(fields)
+    formatted = expected_template.format(fields=concatenated_fields)
+    return sanitize_content(formatted)

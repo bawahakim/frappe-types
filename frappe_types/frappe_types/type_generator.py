@@ -347,11 +347,9 @@ __all__ = [
 ]
 
 
-# TODO: Figure out how this fits in
 def create_type_definition_file(doc, method=None):
-    pass
-    # generator = TypeGenerator()
-    # generator.create_type_definition_file(doc)
+    generator = TypeGenerator(app_name="")
+    generator.create_type_definition_file(doc)
 
 
 def before_migrate():
