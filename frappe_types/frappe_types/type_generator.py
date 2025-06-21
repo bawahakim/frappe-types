@@ -75,7 +75,10 @@ class TypeGenerator:
             print(
                 f"An error occurred while generating type for {module} {err_msg}")
     
-    def create_type_definition_file(self, doctype: DocType):
+    def update_type_definition_file(self, doctype: DocType):
+        """Update a `.ts` type definition file for a single DocType.
+        Called when a DocType is updated.
+        """
         if self._is_migrating_or_installing():
             print("Skipping type generation in patch, migrate, install or setup wizard")
             return
@@ -377,9 +380,11 @@ class TypeGenerator:
 
         return True
 
+# Should probably be renamed to `update_type_definition_file`
 def create_type_definition_file(doc, method=None):
+    # App name is not needed for updating the definition file
     generator = TypeGenerator(app_name="")
-    generator.create_type_definition_file(doc)
+    generator.update_type_definition_file(doc)
 
 
 def before_migrate():
