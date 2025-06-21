@@ -1,11 +1,12 @@
-import frappe
+import subprocess
 from pathlib import Path
 from typing import Optional
 
+import frappe
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
+
 from .utils import create_file, is_developer_mode_enabled, to_ts_type
-import subprocess
 
 
 class TypeGenerator:

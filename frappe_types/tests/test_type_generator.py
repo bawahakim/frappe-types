@@ -1,8 +1,10 @@
-import frappe
-from frappe.tests.utils import FrappeTestCase
-from frappe_types.frappe_types.type_generator import TypeGenerator
 import os
 import shutil
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+
+from frappe_types.frappe_types.type_generator import TypeGenerator
 from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content
 
 

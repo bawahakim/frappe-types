@@ -2,6 +2,7 @@ import os
 
 import frappe
 from frappe.core.doctype.doctype.doctype import DocType
+
 from frappe_types.frappe_types.utils import to_ts_type
 
 
