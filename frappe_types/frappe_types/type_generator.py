@@ -49,7 +49,7 @@ class TypeGenerator:
                 print("Frappe Types is paused")
                 return
 
-            if is_developer_mode_enabled() and self.is_valid_doctype(doc):
+            if is_developer_mode_enabled() and self._is_valid_doctype(doc):
                 print("Generating type definition file for " + doc.name)
                 module_name = doc.module
 
@@ -77,7 +77,7 @@ class TypeGenerator:
                         if not module_path.exists():
                               module_path.mkdir()
 
-                        self.generate_type_definition_file(
+                        self._generate_type_definition_file(
                             doc, module_path)
                 
         except Exception as e:
@@ -122,7 +122,7 @@ class TypeGenerator:
 
         doctype = doc
 
-        if is_developer_mode_enabled() and self.is_valid_doctype(doctype):
+        if is_developer_mode_enabled() and self._is_valid_doctype(doctype):
             print("Generating type definition file for " + doctype.name)
             module_name = doctype.module
             app_name = frappe.db.get_value('Module Def', module_name, 'app_name')
@@ -154,20 +154,24 @@ class TypeGenerator:
                     if not module_path.exists():
                         module_path.mkdir()
 
-                    self.generate_type_definition_file(
+                    self._generate_type_definition_file(
                         doctype, module_path)
 
-    def generate_type_definition_file(self, doctype, module_path):
+
+    # ---------------------------------------------------------------------
+    # Private methods
+    # ---------------------------------------------------------------------
+    def _generate_type_definition_file(self, doctype, module_path):
 
         doctype_name = doctype.name.replace(" ", "")
         type_file_path = module_path / (doctype_name + ".ts")
-        type_file_content = self.generate_type_definition_content(
+        type_file_content = self._generate_type_definition_content(
             doctype, module_path)
 
         create_file(type_file_path, type_file_content)
 
 
-    def generate_type_definition_content(self, doctype, module_path):
+    def _generate_type_definition_content(self, doctype, module_path):
         import_statement = ""
 
         content = "export interface " + doctype.name.replace(" ", "") + "{\n"
@@ -181,9 +185,9 @@ class TypeGenerator:
         for field in doctype.fields:
             if field.fieldtype in ["Section Break", "Column Break", "HTML", "Button", "Fold", "Heading", "Tab Break", "Break"]:
                 continue
-            content += self.get_field_comment(field)
+            content += self._get_field_comment(field)
 
-            file_defination, statement = self.get_field_type_definition(
+            file_defination, statement = self._get_field_type_definition(
                 field, doctype, module_path)
 
             if statement and import_statement.find(statement) == -1:
@@ -195,7 +199,7 @@ class TypeGenerator:
 
         return import_statement + "\n" + content
 
-    def get_field_comment(self, field):
+    def _get_field_comment(self, field):
         desc = field.description
         if field.fieldtype in ["Link", "Table", "Table MultiSelect"]:
             desc = field.options + \
@@ -203,12 +207,12 @@ class TypeGenerator:
         return "\t/**\t" + (field.label if field.label else '') + " : " + field.fieldtype + ((" - " + desc) if desc else "") + "\t*/\n"
 
 
-    def get_field_type_definition(self, field, doctype, module_path):
-        field_type,import_statement =  self.get_field_type(field, doctype, module_path)
-        return field.fieldname + self.get_required(field) + ": " + field_type , import_statement
+    def _get_field_type_definition(self, field, doctype, module_path):
+        field_type,import_statement =  self._get_field_type(field, doctype, module_path)
+        return field.fieldname + self._get_required(field) + ": " + field_type , import_statement
 
 
-    def get_field_type(self, field, doctype, module_path):
+    def _get_field_type(self, field, doctype, module_path):
 
         basic_fieldtypes = {
             "Data": "string",
@@ -242,7 +246,7 @@ class TypeGenerator:
         }
 
         if field.fieldtype in ["Table", "Table MultiSelect"]:
-            return self.get_imports_for_table_fields(field, doctype, module_path)
+            return self._get_imports_for_table_fields(field, doctype, module_path)
 
         if field.fieldtype == "Select":
             if (field.options):
@@ -262,7 +266,7 @@ class TypeGenerator:
             return "any", None
 
 
-    def get_imports_for_table_fields(self, field, doctype, module_path):
+    def _get_imports_for_table_fields(self, field, doctype, module_path):
         if field.fieldtype == "Table" or field.fieldtype == "Table MultiSelect":
             doctype_module_name = doctype.module
             table_doc = frappe.get_doc('DocType', field.options)
@@ -278,7 +282,7 @@ class TypeGenerator:
                     (table_doc.name.replace(" ", "") + ".ts")
                 if not table_file_path.exists():
                     if self.generate_child_tables:
-                        self.generate_type_definition_file(table_doc, module_path)
+                        self._generate_type_definition_file(table_doc, module_path)
 
                         should_import = True
 
@@ -300,7 +304,7 @@ class TypeGenerator:
 
                 if not table_file_path.exists():
                     if self.generate_child_tables:
-                        self.generate_type_definition_file(table_doc, table_module_path)
+                        self._generate_type_definition_file(table_doc, table_module_path)
 
                         should_import = True
 
@@ -314,14 +318,14 @@ class TypeGenerator:
         return "",None
 
 
-    def get_required(self, field):
+    def _get_required(self, field):
         if field.reqd:
             return ""
         else:
             return "?"
 
 
-    def is_valid_doctype(self, doctype):
+    def _is_valid_doctype(self, doctype):
         # if (doctype.custom):
         #     print("Custom DocType - ignoring type generation")
         #     return False
