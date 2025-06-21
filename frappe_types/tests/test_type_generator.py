@@ -3,26 +3,19 @@ from frappe.tests.utils import FrappeTestCase
 from frappe_types.frappe_types.type_generator import TypeGenerator
 import os
 import shutil
-from frappe_types.tests.utils import generate_test_doctype
-
-module = "Frappe Types"
-test_dir = os.path.dirname(__file__)
-types_base_path = os.path.join(test_dir, 'types')
-types_output_path = os.path.join(types_base_path, module.replace(" ", ""), 'TestGeneratedDocType.ts')
+from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content, get_expected_ts_file, default_fields, updated_fields
 
 class TestTypeGenerator(FrappeTestCase):
-    test_doctype_name = "Test Generated DocType"
-
     def tearDown(self) -> None:
-        shutil.rmtree(types_base_path, ignore_errors=True)
+        frappe.conf.pop("frappe_types_pause_generation", None)
+        shutil.rmtree(TestTypeGeneratorUtils.types_base_path, ignore_errors=True)
         return super().tearDown()
 
     @classmethod
     def setUpClass(cls):
-        frappe.delete_doc("DocType", cls.test_doctype_name, force=True, delete_permanently=True)
-        generate_test_doctype(cls.test_doctype_name, module)
+        TestTypeGeneratorUtils.cleanup_db()
+        TestTypeGeneratorUtils.generate_test_doctype()
 
-        frappe.db.delete("App Type Generation Paths")
         type_gen_doc = frappe.new_doc("Type Generation Settings")
         type_gen_doc.append("type_settings", {"app_name": "frappe_types", "app_path": "frappe_types/tests"})
         type_gen_doc.save()
@@ -34,79 +27,40 @@ class TestTypeGenerator(FrappeTestCase):
     def test_generate_types_for_doctype(self):
         generator = TypeGenerator(app_name="frappe_types")
 
-        generator.generate_doctype(self.test_doctype_name)
-        with open(types_output_path, "r") as f:
+        generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
+        with open(TestTypeGeneratorUtils.types_output_path, "r") as f:
             content = f.read()
-            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields))
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(with_child_table=False))
+
+    def test_generate_types_for_doctype_with_child_table(self):
+        generator = TypeGenerator(app_name="frappe_types", generate_child_tables=True)
+
+        generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
+        with open(TestTypeGeneratorUtils.types_output_path, "r") as f:
+            content = f.read()
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(with_child_table=True))
     
     def test_generate_types_for_module(self):
         generator = TypeGenerator(app_name="frappe_types")
 
-        generator.generate_module(module)
-        with open(types_output_path, "r") as f:
+        generator.generate_module(TestTypeGeneratorUtils.module)
+        with open(TestTypeGeneratorUtils.types_output_path, "r") as f:
             content = f.read()
-            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields))
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(with_child_table=True))
 
     def test_updates_types(self):
-        doc = frappe.get_doc("DocType", self.test_doctype_name)
+        doc = frappe.get_doc("DocType", TestTypeGeneratorUtils.test_doctype_name)
         doc.append("fields", {"fieldname": "data_field_new", "fieldtype": "Data", "label": "Data Field New"})
         doc.save()
 
-        with open(types_output_path, "r") as f:
+        with open(TestTypeGeneratorUtils.types_output_path, "r") as f:
             content = f.read()
-            self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields, updated_fields))
+            self.assertEqual(sanitize_content(content), get_expected_ts_file(with_updated_fields=True))
 
     def test_generation_paused(self):
         frappe.conf["frappe_types_pause_generation"] = 1
         generator = TypeGenerator(app_name="frappe_types")
-        generator.generate_doctype(self.test_doctype_name)
+        generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
 
-        self.assertFalse(os.path.exists(types_output_path))
+        self.assertFalse(os.path.exists(TestTypeGeneratorUtils.types_output_path))
 
-        frappe.conf.pop("frappe_types_pause_generation", None)
-
-
-expected_template = """\
-export interface TestGeneratedDocType{{
-	name: string
-	creation: string
-	modified: string
-	owner: string
-	modified_by: string
-	docstatus: 0 | 1 | 2
-	parent?: string
-	parentfield?: string
-	parenttype?: string
-	idx?: number
-{fields}
-}}
-"""
-
-default_fields = """\
-	/**	Data Field : Data	*/
-	data_field?: string
-	/**	Int Field : Int	*/
-	int_field?: number
-"""
-
-updated_fields = """\
-	/**	Data Field New : Data	*/
-	data_field_new?: string
-"""
-
-def sanitize_content(text: str) -> str:
-    tabsize = 4
-    spaces = " " * tabsize
-    cleaned_lines = [
-        # tabs → spaces, trim right-side blanks
-        line.replace("\t", spaces).rstrip()          
-        for line in text.splitlines()
-        # drop empty / whitespace-only lines
-        if line.strip()                             
-    ]
-    return "\n".join(cleaned_lines).rstrip()
-
-def get_expected_ts_file(*fields: str) -> str:
-    concatenated_fields = "\n".join(fields)
-    formatted = expected_template.format(fields=concatenated_fields)
-    return sanitize_content(formatted)
