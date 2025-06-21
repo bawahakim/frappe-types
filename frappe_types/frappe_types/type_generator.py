@@ -4,7 +4,6 @@ from typing import Optional
 
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
-from frappe.model.document import Document
 from .utils import create_file, is_developer_mode_enabled
 import subprocess
 
