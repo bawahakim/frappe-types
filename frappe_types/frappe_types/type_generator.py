@@ -78,7 +78,7 @@ class TypeGenerator:
                               module_path.mkdir()
 
                         self.generate_type_definition_file(
-                            doc, module_path, self.generate_child_tables)
+                            doc, module_path)
                 
         except Exception as e:
             err_msg = f": {str(e)}\n{frappe.get_traceback()}"
@@ -155,19 +155,19 @@ class TypeGenerator:
                         module_path.mkdir()
 
                     self.generate_type_definition_file(
-                        doctype, module_path, generate_child_tables=False)
+                        doctype, module_path)
 
-    def generate_type_definition_file(self, doctype, module_path, generate_child_tables=False):
+    def generate_type_definition_file(self, doctype, module_path):
 
         doctype_name = doctype.name.replace(" ", "")
         type_file_path = module_path / (doctype_name + ".ts")
         type_file_content = self.generate_type_definition_content(
-            doctype, module_path, generate_child_tables)
+            doctype, module_path)
 
         create_file(type_file_path, type_file_content)
 
 
-    def generate_type_definition_content(self, doctype, module_path, generate_child_tables):
+    def generate_type_definition_content(self, doctype, module_path):
         import_statement = ""
 
         content = "export interface " + doctype.name.replace(" ", "") + "{\n"
@@ -184,7 +184,7 @@ class TypeGenerator:
             content += self.get_field_comment(field)
 
             file_defination, statement = self.get_field_type_definition(
-                field, doctype, module_path, generate_child_tables)
+                field, doctype, module_path)
 
             if statement and import_statement.find(statement) == -1:
                 import_statement += statement
@@ -203,12 +203,12 @@ class TypeGenerator:
         return "\t/**\t" + (field.label if field.label else '') + " : " + field.fieldtype + ((" - " + desc) if desc else "") + "\t*/\n"
 
 
-    def get_field_type_definition(self, field, doctype, module_path, generate_child_tables):
-        field_type,import_statement =  self.get_field_type(field, doctype, module_path, generate_child_tables)
+    def get_field_type_definition(self, field, doctype, module_path):
+        field_type,import_statement =  self.get_field_type(field, doctype, module_path)
         return field.fieldname + self.get_required(field) + ": " + field_type , import_statement
 
 
-    def get_field_type(self, field, doctype, module_path, generate_child_tables):
+    def get_field_type(self, field, doctype, module_path):
 
         basic_fieldtypes = {
             "Data": "string",
@@ -242,7 +242,7 @@ class TypeGenerator:
         }
 
         if field.fieldtype in ["Table", "Table MultiSelect"]:
-            return self.get_imports_for_table_fields(field, doctype, module_path, generate_child_tables)
+            return self.get_imports_for_table_fields(field, doctype, module_path)
 
         if field.fieldtype == "Select":
             if (field.options):
@@ -262,7 +262,7 @@ class TypeGenerator:
             return "any", None
 
 
-    def get_imports_for_table_fields(self, field, doctype, module_path, generate_child_tables):
+    def get_imports_for_table_fields(self, field, doctype, module_path):
         if field.fieldtype == "Table" or field.fieldtype == "Table MultiSelect":
             doctype_module_name = doctype.module
             table_doc = frappe.get_doc('DocType', field.options)
@@ -277,7 +277,7 @@ class TypeGenerator:
                 table_file_path: Path = module_path / \
                     (table_doc.name.replace(" ", "") + ".ts")
                 if not table_file_path.exists():
-                    if generate_child_tables:
+                    if self.generate_child_tables:
                         self.generate_type_definition_file(table_doc, module_path)
 
                         should_import = True
@@ -299,7 +299,7 @@ class TypeGenerator:
                     (table_doc.name.replace(" ", "") + ".ts")
 
                 if not table_file_path.exists():
-                    if generate_child_tables:
+                    if self.generate_child_tables:
                         self.generate_type_definition_file(table_doc, table_module_path)
 
                         should_import = True
