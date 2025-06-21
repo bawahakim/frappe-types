@@ -1,5 +1,6 @@
 import frappe
 from pathlib import Path
+from typing import Optional
 from .utils import create_file, is_developer_mode_enabled
 import subprocess
 
@@ -48,32 +49,9 @@ class TypeGenerator:
                 print("Generating type definition file for " + doc.name)
                 module_name = doc.module
 
-                app_path: Path = Path("../apps") / self.app_name
-                if not app_path.exists():
-                    print("App path does not exist - ignoring type generation")
-                    return
-
-                # Fetch Type Generation Settings Document
-                type_generation_settings = frappe.get_doc(
-                    'Type Generation Settings'
-                ).as_dict().type_settings
-
-                # Checking if app is existed in type generation settings
-                for type_setting in type_generation_settings:
-                    if self.app_name == type_setting.app_name:
-                        # Types folder is created in the app
-                        # path: Path = type_setting.app_path / "types"
-                        type_path: Path = app_path / type_setting.app_path / "types"
-                        if not type_path.exists():
-                            type_path.mkdir()
-
-                        module_path: Path = type_path / \
-                            module_name.replace(" ", "")
-                        if not module_path.exists():
-                              module_path.mkdir()
-
-                        self._generate_type_definition_file(
-                            doc, module_path)
+                module_path = self._get_module_path(self.app_name, module_name)
+                if module_path:
+                    self._generate_type_definition_file(doc, module_path)
                 
         except Exception as e:
             err_msg = f": {str(e)}\n{frappe.get_traceback()}"
@@ -117,35 +95,9 @@ class TypeGenerator:
             module_name = doctype.module
             app_name = frappe.db.get_value('Module Def', module_name, 'app_name')
 
-            if app_name == "frappe" or app_name == "erpnext":
-                print("Ignoring core app DocTypes")
-                return
-
-            app_path: Path = Path("../apps") / app_name
-            if not app_path.exists():
-                print("App path does not exist - ignoring type generation")
-                return
-
-            # Fetch Type Generation Settings Document
-            type_generation_settings = frappe.get_doc(
-                'Type Generation Settings'
-            ).as_dict().type_settings
-
-            # Checking if app is existed in type generation settings
-            for type_setting in type_generation_settings:
-                if app_name == type_setting.app_name:
-                    # Types folder is created in the app
-                    type_path: Path = app_path / type_setting.app_path / "types"
-
-                    if not type_path.exists():
-                        type_path.mkdir()
-
-                    module_path: Path = type_path / module_name.replace(" ", "")
-                    if not module_path.exists():
-                        module_path.mkdir()
-
-                    self._generate_type_definition_file(
-                        doctype, module_path)
+            module_path = self._get_module_path(app_name, module_name)
+            if module_path:
+                self._generate_type_definition_file(doctype, module_path)
 
 
     # ---------------------------------------------------------------------
@@ -154,8 +106,37 @@ class TypeGenerator:
     def _is_generation_paused(self) -> bool:
         """Return True if type generation has been temporarily disabled via
         the `frappe_types_pause_generation` flag in *common_site_config*."""
-        common_site_config = frappe.get_conf()
-        return bool(common_site_config.get("frappe_types_pause_generation", 0))
+        is_paused_config = frappe.get_conf().get("frappe_types_pause_generation", 0)
+        return bool(is_paused_config)
+
+    def _get_module_path(self, app_name: str, module_name: str) -> Optional[Path]:
+        """Return the directory `<app>/<custom path>/types/<Module>` creating any
+        missing directories along the way.  Returns *None* when the DocType
+        should be ignored (e.g. core apps, unconfigured app, or missing app
+        path)."""
+        # Ignore core apps
+        if app_name in {"frappe", "erpnext"}:
+            print("Ignoring core app DocTypes")
+            return None
+
+        app_path = Path("../apps") / app_name
+        if not app_path.exists():
+            print("App path does not exist - ignoring type generation")
+            return None
+
+        # Look-up path in Type Generation Settings
+        type_generation_settings = frappe.get_doc('Type Generation Settings').as_dict().type_settings
+        type_setting = next((ts for ts in type_generation_settings if ts.app_name == app_name), None)
+        if not type_setting:
+            return None
+
+        # Ensure directories exist
+        type_path: Path = app_path / type_setting.app_path / "types"
+        type_path.mkdir(parents=True, exist_ok=True)
+
+        module_path: Path = type_path / module_name.replace(" ", "")
+        module_path.mkdir(exist_ok=True)
+        return module_path
 
     def _generate_type_definition_file(self, doctype, module_path):
 
