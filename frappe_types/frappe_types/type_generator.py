@@ -3,6 +3,62 @@ from pathlib import Path
 from .utils import create_file
 import subprocess
 
+class TypeGenerator:
+    """High-level convenience wrapper around the module-level helper functions
+    for generating TypeScript type files.  This allows callers (and tests)
+    to configure the generator once via ``__init__`` and then reuse the same
+    instance for multiple DocTypes / modules.
+
+    Parameters
+    ----------
+    app_name: str
+        Name of the Frappe app the DocTypes belong to. Corresponds to the
+        ``app_name`` argument previously passed to the standalone helper
+        functions.
+    generate_child_tables: bool, default False
+        Whether to recursively generate type definitions for child table
+        DocTypes encountered while processing the given DocType / module.
+    custom_fields: bool, default False
+        When *True* the generator will include custom fields together with
+        standard ones (mirrors the `custom_fields` parameter of
+        :func:`generate_types_for_doctype`).
+    """
+
+    def __init__(self, app_name: str, *, generate_child_tables: bool = False, custom_fields: bool = False) -> None:
+        self.app_name = app_name
+        self.generate_child_tables = generate_child_tables
+        self.custom_fields = custom_fields
+
+    # ---------------------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------------------
+    def generate_doctype(self, doctype: str):
+        """Generate a `.ts` type definition file for a single DocType."""
+        return generate_types_for_doctype(
+            doctype=doctype,
+            app_name=self.app_name,
+            generate_child_tables=self.generate_child_tables,
+            custom_fields=self.custom_fields,
+        )
+
+    def generate_module(self, module: str):
+        """Generate type definition files for *all* DocTypes inside *module*."""
+        return generate_types_for_module(
+            module=module,
+            app_name=self.app_name,
+            generate_child_tables=self.generate_child_tables,
+        )
+
+
+# Re-export for backward compatibility (external callers may still import the
+# module-level helpers directly).  Down-stream code can instead import the new
+# ``TypeGenerator`` class.
+__all__ = [
+    "TypeGenerator",
+    "generate_types_for_doctype",
+    "generate_types_for_module",
+]
+
 
 def create_type_definition_file(doc, method=None):
 
@@ -223,9 +279,9 @@ def get_required(field):
 
 
 def is_valid_doctype(doctype):
-    if (doctype.custom):
-        print("Custom DocType - ignoring type generation")
-        return False
+    # if (doctype.custom):
+    #     print("Custom DocType - ignoring type generation")
+    #     return False
 
     if (doctype.is_virtual):
         print("Virtual DocType - ignoring type generation")
@@ -329,3 +385,4 @@ def generate_types_for_module(module, app_name, generate_child_tables=False):
         err_msg = f": {str(e)}\n{frappe.get_traceback()}"
         print(
             f"An error occurred while generating type for {module} {err_msg}")
+    return 
