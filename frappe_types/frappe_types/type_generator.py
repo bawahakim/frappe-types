@@ -5,10 +5,7 @@ from .utils import create_file, is_developer_mode_enabled
 import subprocess
 
 class TypeGenerator:
-    """High-level convenience wrapper around the module-level helper functions
-    for generating TypeScript type files.  This allows callers (and tests)
-    to configure the generator once via ``__init__`` and then reuse the same
-    instance for multiple DocTypes / modules.
+    """Generator for TypeScript type definitions for DocTypes
 
     Parameters
     ----------
@@ -21,8 +18,7 @@ class TypeGenerator:
         DocTypes encountered while processing the given DocType / module.
     custom_fields: bool, default False
         When *True* the generator will include custom fields together with
-        standard ones (mirrors the `custom_fields` parameter of
-        :func:`generate_types_for_doctype`).
+        standard ones
     """
 
     def __init__(self, app_name: str, *, generate_child_tables: bool = False, custom_fields: bool = False) -> None:
@@ -312,17 +308,6 @@ class TypeGenerator:
             return False
 
         return True
-
-
-# Re-export for backward compatibility (external callers may still import the
-# module-level helpers directly).  Down-stream code can instead import the new
-# ``TypeGenerator`` class.
-__all__ = [
-    "TypeGenerator",
-    "generate_types_for_doctype",
-    "generate_types_for_module",
-]
-
 
 def create_type_definition_file(doc, method=None):
     generator = TypeGenerator(app_name="")

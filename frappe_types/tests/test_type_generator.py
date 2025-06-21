@@ -123,10 +123,6 @@ def sanitize_content(text: str) -> str:
     ]
     return "\n".join(cleaned_lines).rstrip()
 
-def normalize_ts_content(s: str) -> list[str]:
-    # Remove leading/trailing whitespace from each line
-    return [line.strip() for line in s.strip().splitlines()]
-
 def get_expected_ts_file(*fields: str) -> str:
     concatenated_fields = "\n".join(fields)
     formatted = expected_template.format(fields=concatenated_fields)
