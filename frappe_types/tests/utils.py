@@ -2,6 +2,7 @@ import os
 
 import frappe
 from frappe.core.doctype.doctype.doctype import DocType
+from frappe_types.frappe_types.utils import to_ts_type
 
 class TestTypeGeneratorUtils:
     module = "Frappe Types"
@@ -210,6 +211,3 @@ def sanitize_content(text: str) -> str:
         if line.strip()                             
     ]
     return "\n".join(cleaned_lines).rstrip()
-
-def to_ts_type(field_type: str) -> str:
-    return field_type.replace(" ", "")

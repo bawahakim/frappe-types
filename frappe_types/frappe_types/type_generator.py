@@ -4,7 +4,7 @@ from typing import Optional
 
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
-from .utils import create_file, is_developer_mode_enabled
+from .utils import create_file, is_developer_mode_enabled, to_ts_type
 import subprocess
 
 class TypeGenerator:
@@ -146,7 +146,7 @@ class TypeGenerator:
         type_path: Path = app_path / type_setting["app_path"] / "types"
         type_path.mkdir(parents=True, exist_ok=True)
 
-        module_path: Path = type_path / module_name.replace(" ", "")
+        module_path: Path = type_path / to_ts_type(module_name)
         module_path.mkdir(exist_ok=True)
         return module_path
 
@@ -155,7 +155,7 @@ class TypeGenerator:
 
     def _generate_type_definition_file(self, doctype: DocType, module_path: Path):
 
-        doctype_name = doctype.name.replace(" ", "")
+        doctype_name = to_ts_type(doctype.name)
         type_file_path = module_path / (doctype_name + ".ts")
         type_file_content = self._generate_type_definition_content(
             doctype, module_path)
@@ -174,7 +174,7 @@ class TypeGenerator:
         # Collect import lines without duplicates while preserving order
         import_lines: list[str] = []
 
-        interface_name = doctype.name.replace(" ", "")
+        interface_name = to_ts_type(doctype.name)
         lines: list[str] = [f"export interface {interface_name}{{"]
 
         # --- Core document fields 
@@ -323,21 +323,20 @@ class TypeGenerator:
         # -- Identify child table DocType & locations 
         table_doc = frappe.get_doc("DocType", field.options)
         same_module = table_doc.module == doctype.module
-
-        # Helper to build a `.ts` filename from a DocType name
-        def ts_filename(doc: DocType) -> str:
-            return f"{doc.name.replace(' ', '')}.ts"
+        
+        ts_module_name = to_ts_type(table_doc.module)
+        ts_doc_name = to_ts_type(table_doc.name)
 
         # Determine destination folder for the child type file and relative import path
         if same_module:
             target_dir = module_path
-            import_path = f"./{table_doc.name.replace(' ', '')}"
+            import_path = f"./{ts_doc_name}"
         else:
-            target_dir = module_path.parent / table_doc.module.replace(" ", "")
+            target_dir = module_path.parent / ts_module_name
             target_dir.mkdir(exist_ok=True)
-            import_path = f"../{table_doc.module.replace(' ', '')}/{table_doc.name.replace(' ', '')}"
+            import_path = f"../{ts_module_name}/{ts_doc_name}"
 
-        ts_file_path = target_dir / ts_filename(table_doc)
+        ts_file_path = target_dir / f"{ts_doc_name}.ts"
 
         # -- Decide whether we can / should import 
         if not ts_file_path.exists():
@@ -350,9 +349,9 @@ class TypeGenerator:
 
         # At this point the file exists (either previously or just generated)
         import_stmt = (
-            f"import {{ {field.options.replace(' ', '')} }} from '{import_path}'\n"
+            f"import {{ {ts_doc_name} }} from '{import_path}'\n"
         )
-        return f"{field.options.replace(' ', '')}[]", import_stmt
+        return f"{ts_doc_name}[]", import_stmt
 
 
     def _get_required(self, field):

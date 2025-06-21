@@ -17,3 +17,6 @@ def is_developer_mode_enabled():
         print("Developer mode not enabled - ignoring type generation")
         return False
     return True
+
+def to_ts_type(fieldtype: str) -> str:
+    return fieldtype.replace(" ", "")
