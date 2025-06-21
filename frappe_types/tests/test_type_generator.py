@@ -3,6 +3,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe_types.frappe_types.type_generator import TypeGenerator
 import os
 import shutil
+from frappe_types.tests.utils import generate_test_doctype
 
 module = "Frappe Types"
 test_dir = os.path.dirname(__file__)
@@ -19,29 +20,7 @@ class TestTypeGenerator(FrappeTestCase):
     @classmethod
     def setUpClass(cls):
         frappe.delete_doc("DocType", cls.test_doctype_name, force=True, delete_permanently=True)
-
-        doctype = frappe.new_doc("DocType")
-        doctype.name = cls.test_doctype_name
-        doctype.module = module
-        doctype.custom = 1
-        doctype.is_submittable = 0
-        doctype.is_tree = 0
-        doctype.is_virtual = 0
-
-        dataField = {
-                    "fieldname": "data_field",
-                    "fieldtype": "Data",
-                    "label": "Data Field",
-                }
-        intField = {
-                    "fieldname": "int_field",
-                    "fieldtype": "Int",
-                    "label": "Int Field",
-                }
-        doctype.append("fields", dataField)
-        doctype.append("fields", intField)
-        doctype.append("permissions", {"role": "System Manager"})
-        doctype.insert()
+        generate_test_doctype(cls.test_doctype_name, module)
 
         frappe.db.delete("App Type Generation Paths")
         type_gen_doc = frappe.new_doc("Type Generation Settings")
