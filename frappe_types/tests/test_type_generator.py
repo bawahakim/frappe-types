@@ -73,6 +73,15 @@ class TestTypeGenerator(FrappeTestCase):
             content = f.read()
             self.assertEqual(sanitize_content(content), get_expected_ts_file(default_fields, updated_fields))
 
+    def test_generation_paused(self):
+        frappe.conf["frappe_types_pause_generation"] = 1
+        generator = TypeGenerator(app_name="frappe_types")
+        generator.generate_doctype(self.test_doctype_name)
+
+        self.assertFalse(os.path.exists(types_output_path))
+
+        frappe.conf.pop("frappe_types_pause_generation", None)
+
 
 expected_template = """\
 export interface TestGeneratedDocType{{

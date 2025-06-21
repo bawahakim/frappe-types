@@ -40,12 +40,7 @@ class TypeGenerator:
                 'DocType', doctype)
 
             # Check if type generation is paused
-            common_site_config = frappe.get_conf()
-
-            frappe_types_pause_generation = common_site_config.get(
-                "frappe_types_pause_generation", 0)
-
-            if frappe_types_pause_generation:
+            if self._is_generation_paused():
                 print("Frappe Types is paused")
                 return
 
@@ -107,12 +102,7 @@ class TypeGenerator:
     
     def create_type_definition_file(self, doc):
         # Check if type generation is paused
-        common_site_config = frappe.get_conf()
-
-        frappe_types_pause_generation = common_site_config.get(
-            "frappe_types_pause_generation", 0)
-
-        if frappe_types_pause_generation:
+        if self._is_generation_paused():
             print("Frappe Types is paused")
             return
     
@@ -161,6 +151,12 @@ class TypeGenerator:
     # ---------------------------------------------------------------------
     # Private methods
     # ---------------------------------------------------------------------
+    def _is_generation_paused(self) -> bool:
+        """Return True if type generation has been temporarily disabled via
+        the `frappe_types_pause_generation` flag in *common_site_config*."""
+        common_site_config = frappe.get_conf()
+        return bool(common_site_config.get("frappe_types_pause_generation", 0))
+
     def _generate_type_definition_file(self, doctype, module_path):
 
         doctype_name = doctype.name.replace(" ", "")
