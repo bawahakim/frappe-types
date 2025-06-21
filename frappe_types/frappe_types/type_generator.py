@@ -316,7 +316,7 @@ class TypeGenerator:
 
     def _is_valid_doctype(self, doctype: DocType) -> bool:
         type_generation_settings = self._get_type_generation_settings()
-        if not type_generation_settings["include_custom_doctypes"] and (doctype.custom):
+        if not type_generation_settings.get("include_custom_doctypes", False) and (doctype.custom):
             print("Custom DocType - ignoring type generation")
             return False
 
