@@ -4,5 +4,6 @@
 # import frappe
 from frappe.model.document import Document
 
+
 class TypeGenerationSettings(Document):
-	pass
+    pass
