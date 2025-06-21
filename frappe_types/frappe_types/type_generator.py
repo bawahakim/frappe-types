@@ -308,56 +308,51 @@ class TypeGenerator:
             return "any", None
 
 
-    def _get_imports_for_table_fields(self, field: DocField, doctype: DocType, module_path: Path):
-        if field.fieldtype == "Table" or field.fieldtype == "Table MultiSelect":
-            doctype_module_name = doctype.module
-            table_doc: DocType = frappe.get_doc('DocType', field.options)
-            table_module_name = table_doc.module
-            should_import = False
-            import_statement = ""
+    def _get_imports_for_table_fields(
+        self, field: DocField, doctype: DocType, module_path: Path
+    ) -> tuple[str, str | None]:
+        """Resolve TypeScript type & import statement for Table fields.
 
-            # check if table doctype type file is already generated and exists
+        Returns a tuple `(ts_type, import_stmt)` where `import_stmt` is an empty
+        string when no import is needed. For non-table fields the function
+        returns ("", None).
+        """
+        if field.fieldtype not in {"Table", "Table MultiSelect"}:
+            return "", None  # Not a child-table field
 
-            if doctype_module_name == table_module_name:
+        # -- Identify child table DocType & locations 
+        table_doc = frappe.get_doc("DocType", field.options)
+        same_module = table_doc.module == doctype.module
 
-                table_file_path: Path = module_path / \
-                    (table_doc.name.replace(" ", "") + ".ts")
-                if not table_file_path.exists():
-                    if self.generate_child_tables:
-                        self._generate_type_definition_file(table_doc, module_path)
+        # Helper to build a `.ts` filename from a DocType name
+        def ts_filename(doc: DocType) -> str:
+            return f"{doc.name.replace(' ', '')}.ts"
 
-                        should_import = True
+        # Determine destination folder for the child type file and relative import path
+        if same_module:
+            target_dir = module_path
+            import_path = f"./{table_doc.name.replace(' ', '')}"
+        else:
+            target_dir = module_path.parent / table_doc.module.replace(" ", "")
+            target_dir.mkdir(exist_ok=True)
+            import_path = f"../{table_doc.module.replace(' ', '')}/{table_doc.name.replace(' ', '')}"
 
-                else:
-                    should_import = True
-                
-                import_statement = ("import { " + field.options.replace(" ", "") + " } from './" +
-                                        field.options.replace(" ", "") + "'") + "\n" if should_import else ''
+        ts_file_path = target_dir / ts_filename(table_doc)
 
+        # -- Decide whether we can / should import 
+        if not ts_file_path.exists():
+            if self.generate_child_tables:
+                # Generate the missing child type definition
+                self._generate_type_definition_file(table_doc, target_dir)
             else:
+                # No file & not allowed to generate → treat as `any`
+                return "any", ""
 
-                table_module_path: Path = module_path.parent / \
-                    table_module_name.replace(" ", "")
-                if not table_module_path.exists():
-                    table_module_path.mkdir()
-
-                table_file_path: Path = table_module_path / \
-                    (table_doc.name.replace(" ", "") + ".ts")
-
-                if not table_file_path.exists():
-                    if self.generate_child_tables:
-                        self._generate_type_definition_file(table_doc, table_module_path)
-
-                        should_import = True
-
-                else:
-                    should_import = True
-
-                import_statement = ("import { " + field.options.replace(" ", "") + " } from '../" +
-                                        table_module_name.replace(" ", "") + "/" + field.options.replace(" ", "") + "'") + "\n" if should_import else ''
-
-            return field.options.replace(" ", "") + "[]" if should_import else 'any', import_statement
-        return "",None
+        # At this point the file exists (either previously or just generated)
+        import_stmt = (
+            f"import {{ {field.options.replace(' ', '')} }} from '{import_path}'\n"
+        )
+        return f"{field.options.replace(' ', '')}[]", import_stmt
 
 
     def _get_required(self, field):
