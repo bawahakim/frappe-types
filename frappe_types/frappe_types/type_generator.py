@@ -1,6 +1,10 @@
 import frappe
 from pathlib import Path
 from typing import Optional
+
+from frappe.core.doctype.docfield.docfield import DocField
+from frappe.core.doctype.doctype.doctype import DocType
+from frappe.model.document import Document
 from .utils import create_file, is_developer_mode_enabled
 import subprocess
 
@@ -36,18 +40,15 @@ class TypeGenerator:
             doc = frappe.get_meta(doctype) if self.custom_fields else frappe.get_doc(
                 'DocType', doctype)
 
-            # Check if type generation is paused
-            if self._is_generation_paused():
-                print("Frappe Types is paused")
+            if not self._can_generate(doc):
                 return
 
-            if is_developer_mode_enabled() and self._is_valid_doctype(doc):
-                print("Generating type definition file for " + doc.name)
-                module_name = doc.module
+            print("Generating type definition file for " + doc.name)
+            module_name = doc.module
 
-                module_path = self._get_module_path(self.app_name, module_name)
-                if module_path:
-                    self._generate_type_definition_file(doc, module_path)
+            module_path = self._get_module_path(self.app_name, module_name)
+            if module_path:
+                self._generate_type_definition_file(doc, module_path)
                 
         except Exception as e:
             err_msg = f": {str(e)}\n{frappe.get_traceback()}"
@@ -74,31 +75,43 @@ class TypeGenerator:
             print(
                 f"An error occurred while generating type for {module} {err_msg}")
     
-    def create_type_definition_file(self, doc):
-        # Check if type generation is paused
-        if self._is_generation_paused():
-            print("Frappe Types is paused")
-            return
-    
-        if frappe.flags.in_patch or frappe.flags.in_migrate or frappe.flags.in_install or frappe.flags.in_setup_wizard:
+    def create_type_definition_file(self, doctype: DocType):
+        if self._is_migrating_or_installing():
             print("Skipping type generation in patch, migrate, install or setup wizard")
             return
 
-        doctype = doc
+        if not self._can_generate(doctype):
+            return
 
-        if is_developer_mode_enabled() and self._is_valid_doctype(doctype):
-            print("Generating type definition file for " + doctype.name)
-            module_name = doctype.module
-            app_name = frappe.db.get_value('Module Def', module_name, 'app_name')
+        print("Generating type definition file for " + doctype.name)
+        module_name = doctype.module
+        app_name = frappe.db.get_value('Module Def', module_name, 'app_name')
 
-            module_path = self._get_module_path(app_name, module_name)
-            if module_path:
-                self._generate_type_definition_file(doctype, module_path)
+        module_path = self._get_module_path(app_name, module_name)
+        if module_path:
+            self._generate_type_definition_file(doctype, module_path)
 
 
     # ---------------------------------------------------------------------
     # Private methods
     # ---------------------------------------------------------------------
+    def _can_generate(self, doctype: DocType) -> bool:
+        if self._is_generation_paused():
+            print("Frappe Types is paused")
+            return False
+
+        if not is_developer_mode_enabled():
+            print("Developer mode is not enabled")
+            return False
+
+        if not self._is_valid_doctype(doctype):
+            return False
+
+        return True
+
+    def _is_migrating_or_installing(self) -> bool:
+        return frappe.flags.in_patch or frappe.flags.in_migrate or frappe.flags.in_install or frappe.flags.in_setup_wizard
+
     def _is_generation_paused(self) -> bool:
         """Return True if type generation has been temporarily disabled via
         the `frappe_types_pause_generation` flag in *common_site_config*."""
@@ -134,7 +147,7 @@ class TypeGenerator:
         module_path.mkdir(exist_ok=True)
         return module_path
 
-    def _generate_type_definition_file(self, doctype, module_path):
+    def _generate_type_definition_file(self, doctype: DocType, module_path: Path):
 
         doctype_name = doctype.name.replace(" ", "")
         type_file_path = module_path / (doctype_name + ".ts")
@@ -144,7 +157,7 @@ class TypeGenerator:
         create_file(type_file_path, type_file_content)
 
 
-    def _generate_type_definition_content(self, doctype, module_path):
+    def _generate_type_definition_content(self, doctype: DocType, module_path: Path):
         import_statement = ""
 
         content = "export interface " + doctype.name.replace(" ", "") + "{\n"
@@ -172,7 +185,7 @@ class TypeGenerator:
 
         return import_statement + "\n" + content
 
-    def _get_field_comment(self, field):
+    def _get_field_comment(self, field: DocField):
         desc = field.description
         if field.fieldtype in ["Link", "Table", "Table MultiSelect"]:
             desc = field.options + \
@@ -180,12 +193,12 @@ class TypeGenerator:
         return "\t/**\t" + (field.label if field.label else '') + " : " + field.fieldtype + ((" - " + desc) if desc else "") + "\t*/\n"
 
 
-    def _get_field_type_definition(self, field, doctype, module_path):
+    def _get_field_type_definition(self, field: DocField, doctype: DocType, module_path: Path):
         field_type,import_statement =  self._get_field_type(field, doctype, module_path)
         return field.fieldname + self._get_required(field) + ": " + field_type , import_statement
 
 
-    def _get_field_type(self, field, doctype, module_path):
+    def _get_field_type(self, field: DocField, doctype: DocType, module_path: Path):
 
         basic_fieldtypes = {
             "Data": "string",
@@ -239,10 +252,10 @@ class TypeGenerator:
             return "any", None
 
 
-    def _get_imports_for_table_fields(self, field, doctype, module_path):
+    def _get_imports_for_table_fields(self, field: DocField, doctype: DocType, module_path: Path):
         if field.fieldtype == "Table" or field.fieldtype == "Table MultiSelect":
             doctype_module_name = doctype.module
-            table_doc = frappe.get_doc('DocType', field.options)
+            table_doc: DocType = frappe.get_doc('DocType', field.options)
             table_module_name = table_doc.module
             should_import = False
             import_statement = ""
@@ -298,7 +311,7 @@ class TypeGenerator:
             return "?"
 
 
-    def _is_valid_doctype(self, doctype):
+    def _is_valid_doctype(self, doctype: DocType) -> bool:
         # if (doctype.custom):
         #     print("Custom DocType - ignoring type generation")
         #     return False
