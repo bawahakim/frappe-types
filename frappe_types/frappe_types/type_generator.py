@@ -224,12 +224,27 @@ class TypeGenerator:
         # Ensure a blank line between imports and interface (even if no imports)
         return f"{import_block}\n{interface_block}"
 
-    def _get_field_comment(self, field: DocField):
-        desc = field.description
-        if field.fieldtype in ["Link", "Table", "Table MultiSelect"]:
-            desc = field.options + \
-                (" - " + field.description if field.description else "")
-        return "\t/**\t" + (field.label if field.label else '') + " : " + field.fieldtype + ((" - " + desc) if desc else "") + "\t*/\n"
+    def _get_field_comment(self, field: DocField) -> str:
+        """Return a single-line JSDoc comment for the given field.
+
+        Format: \t/**\t<label> : <FieldType> [ - extra]\t*/\n
+        """
+        # Extra information shown after the field type
+        desc: str = field.description or ""
+
+        # For link / table fields we include the linked DocType before description
+        if field.fieldtype in {"Link", "Table", "Table MultiSelect"}:
+            linked = field.options or ""
+            extra = f" - {field.description}" if field.description else ""
+            desc = f"{linked}{extra}"
+
+        label = field.label or ""
+        comment = f"{label} : {field.fieldtype}"
+        if desc:
+            comment += f" - {desc}"
+
+        # Surround comment with tabs to keep alignment
+        return f"\t/**\t{comment}\t*/\n"
 
 
     def _get_field_type_definition(self, field: DocField, doctype: DocType, module_path: Path):
