@@ -3,11 +3,11 @@ name: CI
 on:
   push:
     branches:
-      - develop
+      - main
   pull_request:
 
 concurrency:
-  group: develop-frappe_types-${{ github.event.number }}
+  group: main-frappe_types-${{ github.event.number }}
   cancel-in-progress: true
 
 jobs:
@@ -102,6 +102,7 @@ jobs:
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
+          bench --site test_site set-config developer_mode 1
           bench --site test_site run-tests --app frappe_types
         env:
           TYPE: server
