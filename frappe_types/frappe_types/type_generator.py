@@ -134,18 +134,21 @@ class TypeGenerator:
             return None
 
         # Look-up path in Type Generation Settings
-        type_generation_settings = frappe.get_doc('Type Generation Settings').as_dict().type_settings
-        type_setting = next((ts for ts in type_generation_settings if ts.app_name == app_name), None)
+        type_generation_settings = self._get_type_generation_settings()["type_settings"]
+        type_setting = next((ts for ts in type_generation_settings if ts["app_name"] == app_name), None)
         if not type_setting:
             return None
 
         # Ensure directories exist
-        type_path: Path = app_path / type_setting.app_path / "types"
+        type_path: Path = app_path / type_setting["app_path"] / "types"
         type_path.mkdir(parents=True, exist_ok=True)
 
         module_path: Path = type_path / module_name.replace(" ", "")
         module_path.mkdir(exist_ok=True)
         return module_path
+
+    def _get_type_generation_settings(self) -> dict:
+        return frappe.get_doc('Type Generation Settings').as_dict()
 
     def _generate_type_definition_file(self, doctype: DocType, module_path: Path):
 
@@ -312,9 +315,10 @@ class TypeGenerator:
 
 
     def _is_valid_doctype(self, doctype: DocType) -> bool:
-        # if (doctype.custom):
-        #     print("Custom DocType - ignoring type generation")
-        #     return False
+        type_generation_settings = self._get_type_generation_settings()
+        if not type_generation_settings["include_custom_doctypes"] and (doctype.custom):
+            print("Custom DocType - ignoring type generation")
+            return False
 
         if (doctype.is_virtual):
             print("Virtual DocType - ignoring type generation")

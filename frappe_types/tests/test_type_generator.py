@@ -47,6 +47,10 @@ class TestTypeGenerator(FrappeTestCase):
         type_gen_doc = frappe.new_doc("Type Generation Settings")
         type_gen_doc.append("type_settings", {"app_name": "frappe_types", "app_path": "frappe_types/tests"})
         type_gen_doc.save()
+
+        type_gen_settings = frappe.get_single("Type Generation Settings")
+        type_gen_settings.include_custom_doctypes = 1
+        type_gen_settings.save()
         
     def test_generate_types_for_doctype(self):
         generator = TypeGenerator(app_name="frappe_types")

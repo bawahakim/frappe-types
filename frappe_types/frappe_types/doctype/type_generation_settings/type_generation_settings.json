@@ -6,7 +6,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "type_settings"
+  "type_settings",
+  "include_custom_doctypes"
  ],
  "fields": [
   {
@@ -14,6 +15,13 @@
    "fieldtype": "Table",
    "label": "Type Settings",
    "options": "App Type Generation Paths"
+  },
+  {
+    "fieldname": "include_custom_doctypes",
+    "fieldtype": "Check",
+    "default": 0,
+    "label": "Include Custom Doctypes",
+    "description": "Include custom doctypes in type generation"
   }
  ],
  "index_web_pages_for_search": 1,
