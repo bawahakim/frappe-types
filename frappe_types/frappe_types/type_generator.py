@@ -162,32 +162,67 @@ class TypeGenerator:
 
 
     def _generate_type_definition_content(self, doctype: DocType, module_path: Path):
-        import_statement = ""
+        """Return the TypeScript interface for a DocType.
 
-        content = "export interface " + doctype.name.replace(" ", "") + "{\n"
+        The generated string contains:
+        1. Optional import statements (for child tables etc.)
+        2. The `export interface` block with core document fields and
+           any custom fields from the DocType definition.
+        """
+        # Collect import lines without duplicates while preserving order
+        import_lines: list[str] = []
 
-        # Boilerplate types for all documents
-        name_field_type = "string"
-        if doctype.naming_rule == "Autoincrement":
-            name_field_type = "number"
-        content += f"\tname: {name_field_type}\n\tcreation: string\n\tmodified: string\n\towner: string\n\tmodified_by: string\n\tdocstatus: 0 | 1 | 2\n\tparent?: string\n\tparentfield?: string\n\tparenttype?: string\n\tidx?: number\n"
+        interface_name = doctype.name.replace(" ", "")
+        lines: list[str] = [f"export interface {interface_name}{{"]
+
+        # --- Core document fields 
+        name_type = "number" if doctype.naming_rule == "Autoincrement" else "string"
+        core_fields = [
+            f"\tname: {name_type}",
+            "\tcreation: string",
+            "\tmodified: string",
+            "\towner: string",
+            "\tmodified_by: string",
+            "\tdocstatus: 0 | 1 | 2",
+            "\tparent?: string",
+            "\tparentfield?: string",
+            "\tparenttype?: string",
+            "\tidx?: number",
+        ]
+        lines.extend(core_fields)
+
+        # --- Custom fields
+        ignored_field_types = {
+            "Section Break",
+            "Column Break",
+            "HTML",
+            "Button",
+            "Fold",
+            "Heading",
+            "Tab Break",
+            "Break",
+        }
 
         for field in doctype.fields:
-            if field.fieldtype in ["Section Break", "Column Break", "HTML", "Button", "Fold", "Heading", "Tab Break", "Break"]:
+            if field.fieldtype in ignored_field_types:
                 continue
-            content += self._get_field_comment(field)
 
-            file_defination, statement = self._get_field_type_definition(
-                field, doctype, module_path)
+            # Add comment line
+            lines.append(self._get_field_comment(field).rstrip())
 
-            if statement and import_statement.find(statement) == -1:
-                import_statement += statement
-            
-            content += "\t" + file_defination + "\n"
+            # Add field definition and track needed imports
+            field_def, import_stmt = self._get_field_type_definition(field, doctype, module_path)
+            if import_stmt and import_stmt not in import_lines:
+                import_lines.append(import_stmt)
+            lines.append(f"\t{field_def}")
 
-        content += "}"
+        lines.append("}")
 
-        return import_statement + "\n" + content
+        import_block = "".join(import_lines)  # each statement already ends with \n
+        interface_block = "\n".join(lines)
+
+        # Ensure a blank line between imports and interface (even if no imports)
+        return f"{import_block}\n{interface_block}"
 
     def _get_field_comment(self, field: DocField):
         desc = field.description
