@@ -364,7 +364,7 @@ def after_migrate():
 
 @frappe.whitelist()
 def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, custom_fields=False):
-    generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables)
+    generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables, custom_fields=custom_fields)
     generator.generate_doctype(doctype)
 
 
