@@ -9,6 +9,14 @@ from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content
 
 
 class TestTypeGenerator(FrappeTestCase):
+	@property
+	def generated_typescript_file_path(self) -> str:
+		return TestTypeGeneratorUtils.get_generated_typescript_file_path()
+
+	@property
+	def doctype_name(self) -> str:
+		return TestTypeGeneratorUtils.test_doctype_name
+
 	def tearDown(self) -> None:
 		frappe.conf.pop("frappe_types_pause_generation", None)
 		shutil.rmtree(TestTypeGeneratorUtils.types_base_path, ignore_errors=True)
@@ -33,8 +41,8 @@ class TestTypeGenerator(FrappeTestCase):
 	def test_generate_types_for_doctype(self):
 		generator = TypeGenerator(app_name="frappe_types")
 
-		generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
-		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
+		generator.generate_doctype(self.doctype_name)
+		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -44,8 +52,8 @@ class TestTypeGenerator(FrappeTestCase):
 	def test_generate_types_for_doctype_with_child_table(self):
 		generator = TypeGenerator(app_name="frappe_types", generate_child_tables=True)
 
-		generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
-		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
+		generator.generate_doctype(self.doctype_name)
+		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -56,7 +64,7 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types")
 
 		generator.generate_module(TestTypeGeneratorUtils.module)
-		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
+		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -64,7 +72,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 	def test_updates_types(self):
-		doc = frappe.get_doc("DocType", TestTypeGeneratorUtils.test_doctype_name)
+		doc = frappe.get_doc("DocType", self.doctype_name)
 		doc.append(
 			"fields",
 			{
@@ -75,7 +83,7 @@ class TestTypeGenerator(FrappeTestCase):
 		)
 		doc.save()
 
-		with open(TestTypeGeneratorUtils.get_types_output_path()) as f:
+		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
 				sanitize_content(content),
@@ -85,6 +93,6 @@ class TestTypeGenerator(FrappeTestCase):
 	def test_generation_paused(self):
 		frappe.conf["frappe_types_pause_generation"] = 1
 		generator = TypeGenerator(app_name="frappe_types")
-		generator.generate_doctype(TestTypeGeneratorUtils.test_doctype_name)
+		generator.generate_doctype(self.doctype_name)
 
-		self.assertFalse(os.path.exists(TestTypeGeneratorUtils.get_types_output_path()))
+		self.assertFalse(os.path.exists(self.generated_typescript_file_path))
