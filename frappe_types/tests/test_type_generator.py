@@ -18,6 +18,10 @@ class TestTypeGenerator(FrappeTestCase):
 		return TestTypeGeneratorUtils.get_generated_typescript_file_path()
 
 	@property
+	def child_table_typescript_file_path(self) -> str:
+		return TestTypeGeneratorUtils.get_child_table_typescript_file_path()
+
+	@property
 	def doctype_name(self) -> str:
 		return TestTypeGeneratorUtils.test_doctype_name
 
@@ -47,7 +51,8 @@ class TestTypeGenerator(FrappeTestCase):
 
 		generator.generate_doctype(self.doctype_name)
 
-		self.assertTrue(os.path.exists(self.generated_typescript_file_path))
+		for file_path in TestTypeGeneratorUtils.get_types_module_files_paths():
+			self.assertFalse(os.path.exists(file_path))
 
 		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
@@ -60,6 +65,9 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types", generate_child_tables=True)
 
 		generator.generate_doctype(self.doctype_name)
+
+		self.assertTrue(os.path.exists(self.child_table_typescript_file_path))
+
 		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
@@ -71,6 +79,12 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types")
 
 		generator.generate_module(TestTypeGeneratorUtils.module)
+
+		for file_path in TestTypeGeneratorUtils.get_types_module_files_paths():
+			self.assertTrue(os.path.exists(file_path))
+
+		self.assertTrue(os.path.exists(self.child_table_typescript_file_path))
+
 		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(

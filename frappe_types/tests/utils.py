@@ -182,6 +182,17 @@ class TestTypeGeneratorUtils:
 		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
 
 	@classmethod
+	def get_child_table_typescript_file_path(cls) -> str:
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.doctype_child_name)}.ts")
+
+	@classmethod
+	def get_types_module_files_paths(cls) -> list[str]:
+		return [
+			os.path.join(cls.get_types_module_path(), "AppTypeGenerationPaths.ts"),
+			os.path.join(cls.get_types_module_path(), "TypeGenerationSettings.ts"),
+		]
+
+	@classmethod
 	def _render_base_template(cls, fields: str, import_child_table: str) -> str:
 		return f"""\
 {import_child_table}
