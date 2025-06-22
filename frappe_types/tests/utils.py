@@ -169,14 +169,17 @@ class TestTypeGeneratorUtils:
 		return sanitize_content(formatted)
 
 	@classmethod
-	def get_types_output_path(cls) -> str:
-		cls.test_dir = os.path.dirname(__file__)
-		cls.types_base_path = os.path.join(cls.test_dir, "types")
-		return os.path.join(cls.types_base_path, to_ts_type(cls.module))
+	def get_types_output_base_path(cls) -> str:
+		test_dir = os.path.dirname(__file__)
+		return os.path.join(test_dir, "types")
+
+	@classmethod
+	def get_types_module_path(cls) -> str:
+		return os.path.join(cls.get_types_output_base_path(), to_ts_type(cls.module))
 
 	@classmethod
 	def get_generated_typescript_file_path(cls) -> str:
-		return os.path.join(cls.get_types_output_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
 
 	@classmethod
 	def _render_base_template(cls, fields: str, import_child_table: str) -> str:

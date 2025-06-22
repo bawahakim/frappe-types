@@ -10,6 +10,10 @@ from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content
 
 class TestTypeGenerator(FrappeTestCase):
 	@property
+	def types_module_path(self) -> str:
+		return TestTypeGeneratorUtils.get_types_module_path()
+
+	@property
 	def generated_typescript_file_path(self) -> str:
 		return TestTypeGeneratorUtils.get_generated_typescript_file_path()
 
@@ -19,7 +23,7 @@ class TestTypeGenerator(FrappeTestCase):
 
 	def tearDown(self) -> None:
 		frappe.conf.pop("frappe_types_pause_generation", None)
-		shutil.rmtree(TestTypeGeneratorUtils.types_base_path, ignore_errors=True)
+		shutil.rmtree(self.types_module_path, ignore_errors=True)
 		return super().tearDown()
 
 	@classmethod
@@ -42,6 +46,9 @@ class TestTypeGenerator(FrappeTestCase):
 		generator = TypeGenerator(app_name="frappe_types")
 
 		generator.generate_doctype(self.doctype_name)
+
+		self.assertTrue(os.path.exists(self.generated_typescript_file_path))
+
 		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
