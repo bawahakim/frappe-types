@@ -1,6 +1,5 @@
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 import frappe
 from frappe.core.doctype.docfield.docfield import DocField
@@ -32,10 +31,20 @@ class TypeGenerator:
 		*,
 		generate_child_tables: bool = False,
 		custom_fields: bool = False,
+		base_output_path: str | None = None,
 	) -> None:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
+
+		if not base_output_path:
+			settings = self._get_type_generation_settings()
+			base_output_path = settings.get("base_output_path")
+			if not base_output_path:
+				print("Base output path not found in Type Generation Settings, defaulting to '../apps'")
+				base_output_path = "../apps"
+
+		self.base_output_path = base_output_path
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -144,7 +153,7 @@ class TypeGenerator:
 		should be ignored (e.g. core apps, unconfigured app, or missing app
 		path)."""
 
-		app_path = Path("../apps") / app_name
+		app_path = Path(self.base_output_path) / app_name
 		if not app_path.exists():
 			print("App path does not exist - ignoring type generation")
 			return None

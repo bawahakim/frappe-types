@@ -1,4 +1,6 @@
 import os
+import tempfile
+from pathlib import Path
 
 import frappe
 from frappe.core.doctype.doctype.doctype import DocType
@@ -8,11 +10,30 @@ from frappe_types.frappe_types.utils import to_ts_type
 
 class TestTypeGeneratorUtils:
 	module = "Frappe Types"
+	app_name = "frappe_types"
+	app_path_output_setting = "src"
 	test_doctype_name = "Test Generated DocType"
 	doctype_child_name = f"{test_doctype_name} Child Table"
 
 	@classmethod
-	def generate_test_doctype(cls):
+	def setup_type_generation_settings(cls):
+		type_gen_doc = frappe.new_doc("Type Generation Settings")
+		type_gen_doc.append(
+			"type_settings",
+			{"app_name": cls.app_name, "app_path": cls.app_path_output_setting},
+		)
+		type_gen_doc.set(
+			"base_output_path",
+			cls.temp_dir,
+		)
+		type_gen_doc.save()
+
+		type_gen_settings = frappe.get_single("Type Generation Settings")
+		type_gen_settings.include_custom_doctypes = 1
+		type_gen_settings.save()
+
+	@classmethod
+	def setup_test_doctype(cls):
 		cls._generate_test_doctype_child_table()
 
 		doctype: DocType = frappe.new_doc("DocType")
@@ -132,6 +153,12 @@ class TestTypeGeneratorUtils:
 		frappe.db.delete("App Type Generation Paths")
 
 	@classmethod
+	def prepare_temp_dir(cls):
+		cls.temp_dir = tempfile.mkdtemp()
+		frappe_types_dir = Path(cls.temp_dir) / cls.app_name
+		frappe_types_dir.mkdir()
+
+	@classmethod
 	def _generate_test_doctype_child_table(cls):
 		doctype: DocType = frappe.new_doc("DocType")
 		doctype.name = cls.doctype_child_name
@@ -170,8 +197,7 @@ class TestTypeGeneratorUtils:
 
 	@classmethod
 	def get_types_output_base_path(cls) -> str:
-		test_dir = os.path.dirname(__file__)
-		return os.path.join(test_dir, "types")
+		return os.path.join(cls.temp_dir, cls.app_name, cls.app_path_output_setting, "types")
 
 	@classmethod
 	def get_types_module_path(cls) -> str:

@@ -25,6 +25,15 @@ class TestTypeGenerator(FrappeTestCase):
 	def doctype_name(self) -> str:
 		return TestTypeGeneratorUtils.test_doctype_name
 
+	def instantiate_type_generator(
+		self, app_name: str = TestTypeGeneratorUtils.app_name, generate_child_tables: bool = False
+	) -> TypeGenerator:
+		return TypeGenerator(app_name=app_name, generate_child_tables=generate_child_tables)
+
+	def setUp(self) -> None:
+		shutil.rmtree(self.types_module_path, ignore_errors=True)
+		return super().setUp()
+
 	def tearDown(self) -> None:
 		frappe.conf.pop("frappe_types_pause_generation", None)
 		shutil.rmtree(self.types_module_path, ignore_errors=True)
@@ -33,21 +42,18 @@ class TestTypeGenerator(FrappeTestCase):
 	@classmethod
 	def setUpClass(cls):
 		TestTypeGeneratorUtils.cleanup_db()
-		TestTypeGeneratorUtils.generate_test_doctype()
+		TestTypeGeneratorUtils.prepare_temp_dir()
+		TestTypeGeneratorUtils.setup_test_doctype()
+		TestTypeGeneratorUtils.setup_type_generation_settings()
 
-		type_gen_doc = frappe.new_doc("Type Generation Settings")
-		type_gen_doc.append(
-			"type_settings",
-			{"app_name": "frappe_types", "app_path": "frappe_types/tests"},
-		)
-		type_gen_doc.save()
-
-		type_gen_settings = frappe.get_single("Type Generation Settings")
-		type_gen_settings.include_custom_doctypes = 1
-		type_gen_settings.save()
+	@classmethod
+	def tearDownClass(cls) -> None:
+		TestTypeGeneratorUtils.cleanup_db()
+		shutil.rmtree(TestTypeGeneratorUtils.temp_dir, ignore_errors=True)
+		return super().tearDownClass()
 
 	def test_generate_types_for_doctype(self):
-		generator = TypeGenerator(app_name="frappe_types")
+		generator = self.instantiate_type_generator()
 
 		generator.generate_doctype(self.doctype_name)
 
@@ -62,7 +68,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 	def test_generate_types_for_doctype_with_child_table(self):
-		generator = TypeGenerator(app_name="frappe_types", generate_child_tables=True)
+		generator = self.instantiate_type_generator(generate_child_tables=True)
 
 		generator.generate_doctype(self.doctype_name)
 
@@ -76,7 +82,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 	def test_generate_types_for_module(self):
-		generator = TypeGenerator(app_name="frappe_types")
+		generator = self.instantiate_type_generator()
 
 		generator.generate_module(TestTypeGeneratorUtils.module)
 
@@ -113,7 +119,7 @@ class TestTypeGenerator(FrappeTestCase):
 
 	def test_generation_paused(self):
 		frappe.conf["frappe_types_pause_generation"] = 1
-		generator = TypeGenerator(app_name="frappe_types")
+		generator = self.instantiate_type_generator()
 		generator.generate_doctype(self.doctype_name)
 
 		self.assertFalse(os.path.exists(self.generated_typescript_file_path))
