@@ -31,6 +31,7 @@ class TestTypeGeneratorUtils:
 		cls._prepare_temp_dir()
 		cls._setup_test_doctype()
 		cls._setup_type_generation_settings()
+
 		frappe.conf["frappe_types_pause_generation"] = 0
 		frappe.flags.type_generator_disable_update = 0
 

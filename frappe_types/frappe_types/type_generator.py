@@ -47,6 +47,9 @@ class TypeGenerator:
 			print("Setting base output path to '../apps'")
 			self.base_output_path = "../apps"
 
+		if not hasattr(self, "base_output_path"):
+			self.base_output_path = ""
+
 	# ---------------------------------------------------------------------
 	# Public API
 	# ---------------------------------------------------------------------
