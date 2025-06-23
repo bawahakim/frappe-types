@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -14,9 +15,68 @@ class TestTypeGeneratorUtils:
 	app_path_output_setting = "src"
 	test_doctype_name = "Test Generated DocType"
 	doctype_child_name = f"{test_doctype_name} Child Table"
+	temp_dir: str | None = None
 
 	@classmethod
-	def setup_type_generation_settings(cls):
+	def cleanup(cls):
+		if cls.temp_dir:
+			shutil.rmtree(cls.temp_dir, ignore_errors=True)
+		cls._cleanup_db()
+
+	@classmethod
+	def setup(cls):
+		frappe.flags.type_generator_disable_update = 1
+		cls.cleanup()
+
+		cls._prepare_temp_dir()
+		cls._setup_test_doctype()
+		cls._setup_type_generation_settings()
+		frappe.conf["frappe_types_pause_generation"] = 0
+		frappe.flags.type_generator_disable_update = 0
+
+	@classmethod
+	def get_expected_ts_file(cls, with_child_table: bool = False, with_updated_fields: bool = False) -> str:
+		fields = [cls._default_fields]
+
+		if with_child_table:
+			fields.append(cls._render_table_field_linked())
+		else:
+			fields.append(cls._render_table_field_any())
+
+		if with_updated_fields:
+			fields.append(cls._updated_fields)
+
+		formatted = cls._render_base_template(
+			fields="\n".join(fields),
+			import_child_table=cls._render_import_child_table() if with_child_table else "",
+		)
+		return sanitize_content(formatted)
+
+	@classmethod
+	def get_types_output_base_path(cls) -> str:
+		return os.path.join(cls.temp_dir, cls.app_name, cls.app_path_output_setting, "types")
+
+	@classmethod
+	def get_types_module_path(cls) -> str:
+		return os.path.join(cls.get_types_output_base_path(), to_ts_type(cls.module))
+
+	@classmethod
+	def get_generated_typescript_file_path(cls) -> str:
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
+
+	@classmethod
+	def get_child_table_typescript_file_path(cls) -> str:
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.doctype_child_name)}.ts")
+
+	@classmethod
+	def get_types_module_files_paths(cls) -> list[str]:
+		return [
+			os.path.join(cls.get_types_module_path(), "AppTypeGenerationPaths.ts"),
+			os.path.join(cls.get_types_module_path(), "TypeGenerationSettings.ts"),
+		]
+
+	@classmethod
+	def _setup_type_generation_settings(cls):
 		type_gen_doc = frappe.new_doc("Type Generation Settings")
 		type_gen_doc.append(
 			"type_settings",
@@ -33,7 +93,7 @@ class TestTypeGeneratorUtils:
 		type_gen_settings.save()
 
 	@classmethod
-	def setup_test_doctype(cls):
+	def _setup_test_doctype(cls):
 		cls._generate_test_doctype_child_table()
 
 		doctype: DocType = frappe.new_doc("DocType")
@@ -147,13 +207,13 @@ class TestTypeGeneratorUtils:
 		doctype.insert()
 
 	@classmethod
-	def cleanup_db(cls):
+	def _cleanup_db(cls):
 		frappe.delete_doc("DocType", cls.test_doctype_name, force=True, delete_permanently=True)
 		frappe.delete_doc("DocType", cls.doctype_child_name, force=True, delete_permanently=True)
 		frappe.db.delete("App Type Generation Paths")
 
 	@classmethod
-	def prepare_temp_dir(cls):
+	def _prepare_temp_dir(cls):
 		cls.temp_dir = tempfile.mkdtemp()
 		frappe_types_dir = Path(cls.temp_dir) / cls.app_name
 		frappe_types_dir.mkdir()
@@ -176,47 +236,6 @@ class TestTypeGeneratorUtils:
 
 		doctype.append("permissions", {"role": "System Manager"})
 		doctype.insert()
-
-	@classmethod
-	def get_expected_ts_file(cls, with_child_table: bool = False, with_updated_fields: bool = False) -> str:
-		fields = [cls._default_fields]
-
-		if with_child_table:
-			fields.append(cls._render_table_field_linked())
-		else:
-			fields.append(cls._render_table_field_any())
-
-		if with_updated_fields:
-			fields.append(cls._updated_fields)
-
-		formatted = cls._render_base_template(
-			fields="\n".join(fields),
-			import_child_table=cls._render_import_child_table() if with_child_table else "",
-		)
-		return sanitize_content(formatted)
-
-	@classmethod
-	def get_types_output_base_path(cls) -> str:
-		return os.path.join(cls.temp_dir, cls.app_name, cls.app_path_output_setting, "types")
-
-	@classmethod
-	def get_types_module_path(cls) -> str:
-		return os.path.join(cls.get_types_output_base_path(), to_ts_type(cls.module))
-
-	@classmethod
-	def get_generated_typescript_file_path(cls) -> str:
-		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
-
-	@classmethod
-	def get_child_table_typescript_file_path(cls) -> str:
-		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.doctype_child_name)}.ts")
-
-	@classmethod
-	def get_types_module_files_paths(cls) -> list[str]:
-		return [
-			os.path.join(cls.get_types_module_path(), "AppTypeGenerationPaths.ts"),
-			os.path.join(cls.get_types_module_path(), "TypeGenerationSettings.ts"),
-		]
 
 	@classmethod
 	def _render_base_template(cls, fields: str, import_child_table: str) -> str:

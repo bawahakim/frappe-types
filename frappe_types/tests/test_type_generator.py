@@ -31,25 +31,16 @@ class TestTypeGenerator(FrappeTestCase):
 		return TypeGenerator(app_name=app_name, generate_child_tables=generate_child_tables)
 
 	def setUp(self) -> None:
-		shutil.rmtree(self.types_module_path, ignore_errors=True)
+		TestTypeGeneratorUtils.setup()
 		return super().setUp()
 
 	def tearDown(self) -> None:
-		frappe.conf.pop("frappe_types_pause_generation", None)
-		shutil.rmtree(self.types_module_path, ignore_errors=True)
+		TestTypeGeneratorUtils.cleanup()
 		return super().tearDown()
 
 	@classmethod
-	def setUpClass(cls):
-		TestTypeGeneratorUtils.cleanup_db()
-		TestTypeGeneratorUtils.prepare_temp_dir()
-		TestTypeGeneratorUtils.setup_test_doctype()
-		TestTypeGeneratorUtils.setup_type_generation_settings()
-
-	@classmethod
 	def tearDownClass(cls) -> None:
-		TestTypeGeneratorUtils.cleanup_db()
-		shutil.rmtree(TestTypeGeneratorUtils.temp_dir, ignore_errors=True)
+		TestTypeGeneratorUtils.cleanup()
 		return super().tearDownClass()
 
 	def test_generate_types_for_doctype(self):

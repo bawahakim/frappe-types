@@ -385,6 +385,10 @@ class TypeGenerator:
 
 # Should probably be renamed to `update_type_definition_file`
 def create_type_definition_file(doc, method=None):
+	# Flag meant only to be used in testing and development
+	if frappe.flags.type_generator_disable_update:
+		return
+
 	# App name is not needed for updating the definition file
 	generator = TypeGenerator(app_name="")
 	generator.update_type_definition_file(doc)
