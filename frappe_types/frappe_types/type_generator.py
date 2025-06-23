@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -5,7 +6,7 @@ import frappe
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
 
-from .utils import create_file, is_developer_mode_enabled, to_ts_type
+from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
 
 
 class TypeGenerator:
@@ -31,20 +32,20 @@ class TypeGenerator:
 		*,
 		generate_child_tables: bool = False,
 		custom_fields: bool = False,
-		base_output_path: str | None = None,
 	) -> None:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
 
-		if not base_output_path:
-			settings = self._get_type_generation_settings()
-			base_output_path = settings.get("base_output_path")
-			if not base_output_path:
-				print("Base output path not found in Type Generation Settings, defaulting to '../apps'")
-				base_output_path = "../apps"
+		settings = self._get_type_generation_settings()
+		base_output_path = settings.get("base_output_path")
+		if base_output_path:
+			self.base_output_path = base_output_path
 
-		self.base_output_path = base_output_path
+		should_export_to_root = settings.get("export_to_root")
+		if not should_export_to_root and base_output_path is None:
+			print("Setting base output path to '../apps'")
+			self.base_output_path = "../apps"
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -148,10 +149,23 @@ class TypeGenerator:
 		return bool(is_paused_config)
 
 	def _get_module_path(self, app_name: str, module_name: str) -> Path | None:
-		"""Return the directory `<app>/<custom path>/types/<Module>` creating any
-		missing directories along the way.  Returns *None* when the DocType
-		should be ignored (e.g. core apps, unconfigured app, or missing app
-		path)."""
+		"""Return the directory for type output. If export_to_root is set, always use the root types dir."""
+		settings = self._get_type_generation_settings()
+		if settings.get("export_to_root"):
+			# Determine root output path
+			root_path = settings.get("root_output_path", "types")
+			path_obj = Path(os.path.join(self.base_output_path, root_path, self.app_name))
+
+			# If relative, assume bench root
+			if not path_obj.is_absolute():
+				bench_root = get_bench_root_path()
+				path_obj = Path(os.path.join(bench_root, root_path))
+
+			path_obj.mkdir(parents=True, exist_ok=True)
+			module_path = path_obj / to_ts_type(module_name)
+			module_path.mkdir(exist_ok=True)
+
+			return module_path
 
 		app_path = Path(self.base_output_path) / app_name
 		if not app_path.exists():

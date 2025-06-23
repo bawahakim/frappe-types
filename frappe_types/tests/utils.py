@@ -54,6 +54,11 @@ class TestTypeGeneratorUtils:
 
 	@classmethod
 	def get_types_output_base_path(cls) -> str:
+		settings = frappe.get_single("Type Generation Settings")
+		is_root_enabled = settings.export_to_root
+		if is_root_enabled:
+			return os.path.join(cls.temp_dir, "types", cls.app_name)
+
 		return os.path.join(cls.temp_dir, cls.app_name, cls.app_path_output_setting, "types")
 
 	@classmethod
@@ -85,6 +90,10 @@ class TestTypeGeneratorUtils:
 		type_gen_doc.set(
 			"base_output_path",
 			cls.temp_dir,
+		)
+		type_gen_doc.set(
+			"export_to_root",
+			0,
 		)
 		type_gen_doc.save()
 

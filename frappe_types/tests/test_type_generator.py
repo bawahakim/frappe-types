@@ -114,3 +114,18 @@ class TestTypeGenerator(FrappeTestCase):
 		generator.generate_doctype(self.doctype_name)
 
 		self.assertFalse(os.path.exists(self.generated_typescript_file_path))
+
+	def test_export_to_root(self):
+		settings = frappe.get_single("Type Generation Settings")
+		settings.export_to_root = 1
+		settings.root_output_path = "types"
+		settings.save()
+
+		generator = self.instantiate_type_generator()
+		generator.generate_doctype(self.doctype_name)
+
+		with open(self.generated_typescript_file_path) as f:
+			content = f.read()
+			self.assertEqual(
+				sanitize_content(content), TestTypeGeneratorUtils.get_expected_ts_file(with_child_table=False)
+			)
