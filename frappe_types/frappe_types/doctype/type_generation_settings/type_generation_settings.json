@@ -1,42 +1,55 @@
 {
- "actions": [],
- "allow_rename": 1,
- "creation": "2022-09-14 19:44:07.791947",
- "doctype": "DocType",
- "editable_grid": 1,
- "engine": "InnoDB",
- "field_order": [
-  "type_settings"
- ],
- "fields": [
-  {
-   "fieldname": "type_settings",
-   "fieldtype": "Table",
-   "label": "Type Settings",
-   "options": "App Type Generation Paths"
-  }
- ],
- "index_web_pages_for_search": 1,
- "issingle": 1,
- "links": [],
- "modified": "2023-06-09 13:55:18.286294",
- "modified_by": "Administrator",
- "module": "Frappe Types",
- "name": "Type Generation Settings",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+  "actions": [],
+  "allow_rename": 1,
+  "creation": "2022-09-14 19:44:07.791947",
+  "doctype": "DocType",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": ["type_settings", "include_custom_doctypes", "base_output_path"],
+  "fields": [
+    {
+      "fieldname": "type_settings",
+      "fieldtype": "Table",
+      "label": "Type Settings",
+      "options": "App Type Generation Paths"
+    },
+    {
+      "fieldname": "include_custom_doctypes",
+      "fieldtype": "Check",
+      "default": 0,
+      "label": "Include Custom Doctypes",
+      "description": "Include custom doctypes in type generation"
+    },
+    {
+      "fieldname": "base_output_path",
+      "fieldtype": "Data",
+      "label": "Base Output Path",
+      "description": "Base output path for type generation",
+      "default": "../apps",
+      "hidden": 1
+    }
+  ],
+  "index_web_pages_for_search": 1,
+  "issingle": 1,
+  "links": [],
+  "modified": "2023-06-09 13:55:18.286294",
+  "modified_by": "Administrator",
+  "module": "Frappe Types",
+  "name": "Type Generation Settings",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "print": 1,
+      "read": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
 }
