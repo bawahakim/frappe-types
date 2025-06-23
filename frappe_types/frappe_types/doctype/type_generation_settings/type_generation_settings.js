@@ -12,8 +12,20 @@ frappe.ui.form.on("Type Generation Settings", {
 				!frm.doc.export_to_root
 			);
 		}
-	},
-	export_to_root: function (frm) {
-		frm.trigger("refresh");
+
+		frm.add_custom_button("Generate All", function () {
+			frappe.call({
+				method: "frappe_types.frappe_types.type_generator.export_all_apps",
+				callback: function (r) {
+					if (r.message) {
+						frappe.show_alert({
+							title: "Success",
+							message: r.message,
+							indicator: "green",
+						});
+					}
+				},
+			});
+		});
 	},
 });

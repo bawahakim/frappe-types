@@ -120,6 +120,21 @@ class TypeGenerator:
 		if module_path:
 			self._generate_type_definition_file(doctype, module_path)
 
+	def export_all_apps(self):
+		"""Generate type definitions for all configured apps."""
+		settings = self._get_type_generation_settings()
+		type_settings = settings.get("type_settings", [])
+		for ts in type_settings:
+			app_name = ts["app_name"]
+			print(f"Generating type definitions for app {app_name}")
+			generator = type(self)(
+				app_name, generate_child_tables=self.generate_child_tables, custom_fields=self.custom_fields
+			)
+			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
+			print("Modules:", modules)
+			for module in modules:
+				generator.generate_module(module)
+
 	# ---------------------------------------------------------------------
 	# Private methods
 	# ---------------------------------------------------------------------
@@ -453,3 +468,12 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 def generate_types_for_module(module, app_name, generate_child_tables=False):
 	generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables)
 	generator.generate_module(module)
+
+
+@frappe.whitelist()
+def export_all_apps():
+	type_settings = frappe.get_single("Type Generation Settings")
+	type_settings.base_output_path = ""
+	type_settings.save()
+	generator = TypeGenerator(app_name="")
+	generator.export_all_apps()
