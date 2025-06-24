@@ -11,10 +11,13 @@ from frappe_types.frappe_types.utils import to_ts_type
 
 class TestTypeGeneratorUtils:
 	module = "Mock Module"
+	module_2 = "Mock Module 2"
 	app_name = "mock_app"
+	app_name_2 = "mock_app_2"
 	app_path_output_setting = "src"
 	test_doctype_name = "Test Generated DocType"
 	test_doctype_name_2 = "Test Generated DocType 2"
+	test_doctype_name_3 = "Test Generated DocType 3"
 	doctype_child_name = f"{test_doctype_name} Child Table"
 	temp_dir: str | None = None
 
@@ -56,17 +59,24 @@ class TestTypeGeneratorUtils:
 		return sanitize_content(formatted)
 
 	@classmethod
-	def get_types_output_base_path(cls) -> str:
+	def get_types_output_base_path(cls, app_name: str | None = None) -> str:
+		if app_name is None:
+			app_name = cls.app_name
+
 		settings = frappe.get_single("Type Generation Settings")
 		is_root_enabled = settings.export_to_root
 		if is_root_enabled:
-			return os.path.join(cls.temp_dir, "types", cls.app_name)
+			return os.path.join(cls.temp_dir, "types", app_name)
 
-		return os.path.join(cls.temp_dir, cls.app_name, cls.app_path_output_setting, "types")
+		return os.path.join(cls.temp_dir, app_name, cls.app_path_output_setting, "types")
 
 	@classmethod
 	def get_types_module_path(cls) -> str:
-		return os.path.join(cls.get_types_output_base_path(), to_ts_type(cls.module))
+		return os.path.join(cls.get_types_output_base_path(cls.app_name), to_ts_type(cls.module))
+
+	@classmethod
+	def get_types_module_2_path(cls) -> str:
+		return os.path.join(cls.get_types_output_base_path(cls.app_name_2), to_ts_type(cls.module_2))
 
 	@classmethod
 	def get_generated_typescript_file_path(cls) -> str:
@@ -83,6 +93,21 @@ class TestTypeGeneratorUtils:
 		]
 
 	@classmethod
+	def get_app_2_output_file_paths(cls) -> list[str]:
+		return [
+			os.path.join(cls.get_types_module_2_path(), f"{to_ts_type(cls.test_doctype_name_3)}.ts"),
+		]
+
+	@classmethod
+	def get_all_apps_output_file_paths(cls) -> list[str]:
+		paths = []
+		paths.extend(cls.get_types_module_files_paths())
+		paths.append(cls.get_child_table_typescript_file_path())
+		paths.extend(cls.get_app_2_output_file_paths())
+
+		return paths
+
+	@classmethod
 	def _setup_modules(cls):
 		module_def = frappe.new_doc("Module Def")
 		module_def.update(
@@ -95,12 +120,27 @@ class TestTypeGeneratorUtils:
 
 		module_def.insert(ignore_if_duplicate=True)
 
+		module_def_2 = frappe.new_doc("Module Def")
+		module_def_2.update(
+			{
+				"module_name": cls.module_2,
+				"app_name": cls.app_name_2,
+				"custom": 1,
+			}
+		)
+
+		module_def_2.insert(ignore_if_duplicate=True)
+
 	@classmethod
 	def _setup_type_generation_settings(cls):
 		type_gen_doc = frappe.new_doc("Type Generation Settings")
 		type_gen_doc.append(
 			"type_settings",
 			{"app_name": cls.app_name, "app_path": cls.app_path_output_setting},
+		)
+		type_gen_doc.append(
+			"type_settings",
+			{"app_name": cls.app_name_2, "app_path": cls.app_path_output_setting},
 		)
 		type_gen_doc.set(
 			"base_output_path",
@@ -126,7 +166,79 @@ class TestTypeGeneratorUtils:
 		doctype.custom = 1
 
 		# Core field templates covering most field types supported by TypeGenerator
+		field_defs = cls._get_test_doctype_fields()
+
+		for f in field_defs:
+			doctype.append("fields", f)
+
+		doctype.append("permissions", {"role": "System Manager"})
+		doctype.insert()
+
+		doctype_2: DocType = frappe.new_doc("DocType")
+		doctype_2.name = cls.test_doctype_name_2
+		doctype_2.module = cls.module
+		doctype_2.custom = 1
+
 		field_defs = [
+			{"fieldname": "data_field", "fieldtype": "Data", "label": "Data Field"},
+			{"fieldname": "int_field", "fieldtype": "Int", "label": "Int Field"},
+		]
+
+		for f in field_defs:
+			doctype_2.append("fields", f)
+
+		doctype_2.append("permissions", {"role": "System Manager"})
+		doctype_2.insert()
+
+		doctype_3: DocType = frappe.new_doc("DocType")
+		doctype_3.name = cls.test_doctype_name_3
+		doctype_3.module = cls.module_2
+		doctype_3.custom = 1
+
+		for f in field_defs:
+			doctype_3.append("fields", f)
+
+		doctype_3.append("permissions", {"role": "System Manager"})
+		doctype_3.insert()
+
+	@classmethod
+	def _cleanup_db(cls):
+		frappe.delete_doc("DocType", cls.test_doctype_name, force=True, delete_permanently=True)
+		frappe.delete_doc("DocType", cls.test_doctype_name_2, force=True, delete_permanently=True)
+		frappe.delete_doc("DocType", cls.doctype_child_name, force=True, delete_permanently=True)
+		frappe.delete_doc("DocType", cls.test_doctype_name_3, force=True, delete_permanently=True)
+		frappe.db.delete("App Type Generation Paths")
+
+	@classmethod
+	def _prepare_temp_dir(cls):
+		cls.temp_dir = tempfile.mkdtemp()
+		frappe_types_dir = Path(cls.temp_dir) / cls.app_name
+		frappe_types_dir_2 = Path(cls.temp_dir) / cls.app_name_2
+		frappe_types_dir.mkdir()
+		frappe_types_dir_2.mkdir()
+
+	@classmethod
+	def _generate_test_doctype_child_table(cls):
+		doctype: DocType = frappe.new_doc("DocType")
+		doctype.name = cls.doctype_child_name
+		doctype.module = cls.module
+		doctype.custom = 1
+		doctype.istable = 1
+
+		field_defs = [
+			{"fieldname": "data_field", "fieldtype": "Data", "label": "Data Field"},
+			{"fieldname": "int_field", "fieldtype": "Int", "label": "Int Field"},
+		]
+
+		for f in field_defs:
+			doctype.append("fields", f)
+
+		doctype.append("permissions", {"role": "System Manager"})
+		doctype.insert()
+
+	@classmethod
+	def _get_test_doctype_fields(cls):
+		return [
 			{"fieldname": "data_field", "fieldtype": "Data", "label": "Data Field"},
 			{"fieldname": "int_field", "fieldtype": "Int", "label": "Int Field"},
 			{
@@ -223,60 +335,6 @@ class TestTypeGeneratorUtils:
 				"options": cls.doctype_child_name,
 			},
 		]
-
-		for f in field_defs:
-			doctype.append("fields", f)
-
-		doctype.append("permissions", {"role": "System Manager"})
-		doctype.insert()
-
-		doctype_2: DocType = frappe.new_doc("DocType")
-		doctype_2.name = cls.test_doctype_name_2
-		doctype_2.module = cls.module
-		doctype_2.custom = 1
-
-		field_defs = [
-			{"fieldname": "data_field", "fieldtype": "Data", "label": "Data Field"},
-			{"fieldname": "int_field", "fieldtype": "Int", "label": "Int Field"},
-		]
-
-		for f in field_defs:
-			doctype_2.append("fields", f)
-
-		doctype_2.append("permissions", {"role": "System Manager"})
-		doctype_2.insert()
-
-	@classmethod
-	def _cleanup_db(cls):
-		frappe.delete_doc("DocType", cls.test_doctype_name, force=True, delete_permanently=True)
-		frappe.delete_doc("DocType", cls.test_doctype_name_2, force=True, delete_permanently=True)
-		frappe.delete_doc("DocType", cls.doctype_child_name, force=True, delete_permanently=True)
-		frappe.db.delete("App Type Generation Paths")
-
-	@classmethod
-	def _prepare_temp_dir(cls):
-		cls.temp_dir = tempfile.mkdtemp()
-		frappe_types_dir = Path(cls.temp_dir) / cls.app_name
-		frappe_types_dir.mkdir()
-
-	@classmethod
-	def _generate_test_doctype_child_table(cls):
-		doctype: DocType = frappe.new_doc("DocType")
-		doctype.name = cls.doctype_child_name
-		doctype.module = cls.module
-		doctype.custom = 1
-		doctype.istable = 1
-
-		field_defs = [
-			{"fieldname": "data_field", "fieldtype": "Data", "label": "Data Field"},
-			{"fieldname": "int_field", "fieldtype": "Int", "label": "Int Field"},
-		]
-
-		for f in field_defs:
-			doctype.append("fields", f)
-
-		doctype.append("permissions", {"role": "System Manager"})
-		doctype.insert()
 
 	@classmethod
 	def _render_base_template(cls, fields: str, import_child_table: str) -> str:
