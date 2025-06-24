@@ -23,7 +23,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "App Path",
-   "reqd": 1
+   "reqd": 0,
+   "_comment_reqd": "Leave reqd=0 — field is validated manually in client/server validate based on export_to_root"
   }
  ],
  "index_web_pages_for_search": 1,
