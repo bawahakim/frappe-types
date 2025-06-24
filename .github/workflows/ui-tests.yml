@@ -5,8 +5,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare-frappe:
+    runs-on: ubuntu-latest
+    outputs:
+      repo-dir: ${{ steps.clone.outputs.repo-dir }}
+    steps:
+      - id: clone
+        run: |
+          git clone --depth 1 --branch develop https://github.com/frappe/frappe.git frappe-frappe
+          echo "repo-dir=frappe-frappe" >> $GITHUB_OUTPUT
+
   test:
-    name: UI Tests
-    uses: frappe/frappe/.github/workflows/_base-ui-tests.yml@develop
+    needs: prepare-frappe
+    uses: ./frappe-frappe/.github/workflows/_base-ui-tests.yml@develop
     with:
-      parallel-runs: 3
+      parallel-runs: 1
