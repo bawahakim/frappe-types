@@ -43,12 +43,16 @@ class TypeGenerator:
 			self.base_output_path = base_output_path
 
 		should_export_to_root = settings.get("export_to_root")
-		if not should_export_to_root and base_output_path is None:
+		print("should export to root: ", should_export_to_root)
+		print("base output path: ", base_output_path)
+		if not should_export_to_root and not base_output_path:
 			print("Setting base output path to '../apps'")
 			self.base_output_path = "../apps"
 
 		if not hasattr(self, "base_output_path"):
 			self.base_output_path = ""
+
+		print("final base output path: ", self.base_output_path)
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -128,7 +132,9 @@ class TypeGenerator:
 			app_name = ts["app_name"]
 			print(f"Generating type definitions for app {app_name}")
 			generator = type(self)(
-				app_name, generate_child_tables=self.generate_child_tables, custom_fields=self.custom_fields
+				app_name,
+				generate_child_tables=self.generate_child_tables,
+				custom_fields=self.custom_fields,
 			)
 			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
 			print("Modules:", modules)
@@ -301,7 +307,10 @@ class TypeGenerator:
 
 	def _get_field_type_definition(self, field: DocField, doctype: DocType, module_path: Path):
 		field_type, import_statement = self._get_field_type(field, doctype, module_path)
-		return field.fieldname + self._get_required(field) + ": " + field_type, import_statement
+		return (
+			field.fieldname + self._get_required(field) + ": " + field_type,
+			import_statement,
+		)
 
 	def _get_field_type(self, field: DocField, doctype: DocType, module_path: Path):
 		basic_fieldtypes = {
@@ -477,3 +486,5 @@ def export_all_apps():
 	type_settings.save()
 	generator = TypeGenerator(app_name="")
 	generator.export_all_apps()
+
+	return "Success"
