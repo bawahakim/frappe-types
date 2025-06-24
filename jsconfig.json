@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "esnext",
+    "module": "esnext",
+    "baseUrl": ".",
+    "types": ["cypress", "node", "@testing-library/cypress"]
+  },
+  "include": [
+    "frappe_types/**/*.js",
+    "frappe_types/**/*.ts",
+    "frappe_types/**/*.d.ts"
+  ]
+}

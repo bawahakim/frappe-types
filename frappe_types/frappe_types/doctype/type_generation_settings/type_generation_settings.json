@@ -5,7 +5,11 @@
   "doctype": "DocType",
   "editable_grid": 1,
   "engine": "InnoDB",
-  "field_order": ["type_settings", "include_custom_doctypes", "base_output_path"],
+  "field_order": [
+    "type_settings",
+    "include_custom_doctypes",
+    "base_output_path"
+  ],
   "fields": [
     {
       "fieldname": "type_settings",
