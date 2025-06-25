@@ -2,20 +2,25 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-
-concurrency:
-  group: main-frappe_types-${{ github.event.number }}
-  cancel-in-progress: true
 
 jobs:
   tests:
+    name: ${{ matrix.test }} tests
     runs-on: ubuntu-latest
+
     strategy:
-      fail-fast: false
-    name: Server
+      matrix:
+        include:
+          - test: unit
+            run: bench run-tests --app frappe_types
+          - test: ui
+            run: |
+              echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
+              nohup bench start &> bench.log &
+              sleep 10
+              bench run-ui-tests frappe_types --headless
 
     services:
       redis-cache:
@@ -106,25 +111,8 @@ jobs:
           bench set-config allow_tests true
           bench set-config developer_mode 1
 
-      - name: Run Unit Tests
+      - name: Run ${{ matrix.test }} tests
         working-directory: /home/runner/frappe-bench
-        run: |
-          bench run-tests --app frappe_types 
-        env:
-          TYPE: server
-
-      - name: Start Bench (background)
-        working-directory: /home/runner/frappe-bench
-        run: |
-          nohup bench start &> bench.log &
-          sleep 10  # Give it time to start
-
-      - name: Run UI Tests
-        working-directory: /home/runner/frappe-bench
-        run: |
-          # Add 'test_site' to /etc/hosts 
-          echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
-
-          bench run-ui-tests frappe_types --headless
+        run: ${{ matrix.run }}
         env:
           TYPE: server
