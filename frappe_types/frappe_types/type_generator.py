@@ -423,6 +423,56 @@ class TypeGenerator:
 
 		return True
 
+	def write_doctype_map(self):
+		"""Generate a TypeScript type mapping DocType names to TS interfaces."""
+		settings = self._get_type_generation_settings()
+		export_to_root = settings.get("export_to_root")
+		if export_to_root:
+			root_path = settings.get("root_output_path", "types")
+			base_path = Path(os.path.join(self.base_output_path, root_path))
+			if not base_path.is_absolute():
+				bench_root = get_bench_root_path()
+				base_path = Path(os.path.join(bench_root, root_path))
+			output_base = base_path
+		else:
+			app_path = Path(self.base_output_path) / self.app_name
+			type_settings = settings.get("type_settings", [])
+			type_setting = next((ts for ts in type_settings if ts["app_name"] == self.app_name), None)
+			if not type_setting:
+				print(f"No type setting found for app {self.app_name} - skipping DocTypeMap")
+				return
+			output_base = app_path / type_setting["app_path"] / "types"
+
+		# Collect doctypes for this app
+		dt_map = []
+		modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": self.app_name})]
+
+		for module in modules:
+			dts = [d["name"] for d in frappe.get_list("DocType", filters={"module": module})]
+			for dt in dts:
+				ts_name = to_ts_type(dt)
+				module_dir = to_ts_type(module)
+				dt_map.append((dt, ts_name, module_dir))
+
+		# Build import statements
+		seen = set()
+		imports = []
+		for _, ts_name, module_dir in dt_map:
+			if ts_name not in seen:
+				imports.append(f"import {{ {ts_name} }} from './{module_dir}/{ts_name}';\n")
+				seen.add(ts_name)
+
+		# Build DocTypeMap type
+		lines = ["export type DocTypeMap = {"]
+		for orig, ts_name, _ in dt_map:
+			lines.append(f'  "{orig}": {ts_name};')
+		lines.append("}")
+		content = "".join(imports) + "\n" + "\n".join(lines)
+
+		# Write file
+		map_file = output_base / "DocTypeMap.ts"
+		create_file(map_file, content)
+
 
 # Should probably be renamed to `update_type_definition_file`
 def create_type_definition_file(doc, method=None):
