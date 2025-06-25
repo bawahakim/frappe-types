@@ -59,7 +59,7 @@ const create_generate_all_button = (frm) => {
 			callback: function (r) {
 				if (r.message) {
 					frappe.show_alert({
-						title: "Success",
+						title: __("Success"),
 						message: r.message,
 						indicator: "green",
 					});
