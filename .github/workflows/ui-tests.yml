@@ -8,5 +8,7 @@ jobs:
   test:
     name: UI Tests
     uses: frappe/frappe/.github/workflows/_base-ui-tests.yml@develop
+    env:
+      FRAPPE_GH_ORG: frappe
     with:
       parallel-runs: 3
