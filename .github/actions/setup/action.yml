@@ -49,11 +49,13 @@ runs:
     with:
       path: apps/${{ github.event.repository.name }}
 
-  - shell: bash -e {0}
+  - name: Rename app and export app_name
+    shell: bash -e {0}
     run: |
       # Rename app by reading from pyproject.toml
       app_name=$(cat apps/${{ github.event.repository.name }}/pyproject.toml | grep "name" | head -1 | cut -d'"' -f2)
       mv apps/${{ github.event.repository.name }} apps/${app_name}
+      echo "app_name=${app_name}" >> $GITHUB_ENV
 
   - name: Setup Python
     uses: actions/setup-python@v5
@@ -63,8 +65,8 @@ runs:
   - shell: bash -e {0}
     run: |
       # Check for valid Python & Merge Conflicts
-      python -m compileall -q -f "${GITHUB_WORKSPACE}/apps/${{ github.event.repository.name }}"
-      if grep -lr --exclude-dir=node_modules "^<<<<<<< " "${GITHUB_WORKSPACE}/apps/${{ github.event.repository.name }}"
+      python -m compileall -q -f "${GITHUB_WORKSPACE}/apps/${{ env.app_name }}"
+      if grep -lr --exclude-dir=node_modules "^<<<<<<< " "${GITHUB_WORKSPACE}/apps/${{ env.app_name }}"
           then echo "Found merge conflicts"
           exit 1
       fi
@@ -155,10 +157,10 @@ runs:
       echo -e "\033[33mInit Bench: $((end_time - start_time)) seconds\033[0m"
       cat ${GITHUB_WORKSPACE}/Procfile | awk '{print "\033[0;34m" $0 "\033[0m"}'
       # Attempt to copy the configuration file
-      if cp "${GITHUB_WORKSPACE}/apps/${{ github.event.repository.name }}/.github/helper/db/$DB.json" ${GITHUB_WORKSPACE}/sites/test_site/site_config.json; then
+      if cp "${GITHUB_WORKSPACE}/apps/${{ env.app_name }}/.github/helper/db/$DB.json" ${GITHUB_WORKSPACE}/sites/test_site/site_config.json; then
           echo "Successfully copied ${DB}.json to site_config.json."
       else
-          echo "Error: The configuration file ${GITHUB_WORKSPACE}/apps/${{ github.event.repository.name }}/.github/helper/db/$DB.json does not exist."
+          echo "Error: The configuration file ${GITHUB_WORKSPACE}/apps/${{ env.app_name }}/.github/helper/db/$DB.json does not exist."
           echo "Please ensure that the database JSON file is correctly named and located in the helper/db directory."
           exit 1  # Exit with a non-zero status to indicate failure
       fi
