@@ -98,6 +98,12 @@ jobs:
         env:
           CI: "Yes"
 
+      - name: Start Bench (background)
+        working-directory: /home/runner/frappe-bench
+        run: |
+          nohup bench start &> bench.log &
+          sleep 10  # Give it time to start
+
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
