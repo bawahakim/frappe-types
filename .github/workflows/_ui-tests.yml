@@ -1,0 +1,25 @@
+name: Run UI Tests
+
+on:
+  workflow_call:
+    inputs:
+      bench-dir:
+        required: true
+        type: string
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start Bench
+        working-directory: ${{ inputs.bench-dir }}
+        run: |
+          nohup bench start &> bench.log &
+          sleep 10
+
+      - name: Run UI Tests
+        working-directory: ${{ inputs.bench-dir }}
+        run: |
+          echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
+          bench run-ui-tests frappe_types --headless
