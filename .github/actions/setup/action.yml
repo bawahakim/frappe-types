@@ -49,6 +49,12 @@ runs:
     with:
       path: apps/${{ github.event.repository.name }}
 
+  - name: Rename app
+    run: |
+      # read pyproject.toml
+      app_name=$(cat apps/${{ github.event.repository.name }}/pyproject.toml | grep "name" | head -1 | cut -d'"' -f2)
+      mv apps/${{ github.event.repository.name }} apps/${app_name}
+
   - name: Setup Python
     uses: actions/setup-python@v5
     with:
