@@ -67,7 +67,6 @@ runs:
     uses: actions/checkout@v4
     with:
       repository: frappe/frappe
-      ref: ${{ github.event.client_payload.frappe_sha || github.base_ref || github.ref_name }}
       path: apps/frappe
     if: github.event.repository.name != 'frappe'
 
