@@ -53,7 +53,7 @@ const filter_apps_dropdown = async (frm, cdt, cdn) => {
 };
 
 const create_generate_all_button = (frm) => {
-	frm.add_custom_button("Generate All", function () {
+	frm.add_custom_button(__("Generate All"), function () {
 		frappe.call({
 			method: "frappe_types.frappe_types.type_generator.export_all_apps",
 			callback: function (r) {
