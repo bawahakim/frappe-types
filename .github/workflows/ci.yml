@@ -1,23 +1,51 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
 
 jobs:
-  setup:
-    uses: ./.github/workflows/_setup.yml
+  tests:
+    name: ${{ matrix.test }} tests
+    runs-on: ubuntu-latest
 
-  unit-tests:
-    needs: setup
-    uses: ./.github/workflows/_unit-tests.yml
-    with:
-      bench-dir: ${{ needs.setup.outputs.bench-dir }}
+    strategy:
+      matrix:
+        include:
+          - test: unit
+            run: bench run-tests --app frappe_types
+          - test: ui
+            run: |
+              echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
+              nohup bench start &> bench.log &
+              sleep 10
+              bench run-ui-tests frappe_types --headless
 
-  ui-tests:
-    needs: setup
-    uses: ./.github/workflows/_ui-tests.yml
-    with:
-      bench-dir: ${{ needs.setup.outputs.bench-dir }}
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports: [ '13000:6379' ]
+      redis-queue:
+        image: redis:alpine
+        ports: [ '11000:6379' ]
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mariadb-admin ping"
+          --health-interval=5s
+          --health-timeout=2s
+          --health-retries=3
+
+    steps:
+      - name: Setup Frappe bench & dependencies
+        uses: ./.github/actions/setup-frappe-bench
+
+      - name: Run ${{ matrix.test }} tests
+        working-directory: ~/frappe-bench
+        run: ${{ matrix.run }}
+        env:
+          TYPE: server
