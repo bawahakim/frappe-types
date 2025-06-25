@@ -112,7 +112,7 @@ jobs:
           bench set-config developer_mode 1
 
       - name: Run ${{ matrix.test }} tests
-        working-directory: ~/frappe-bench
+        working-directory: ${{ env.HOME }}/frappe-bench
         run: ${{ matrix.run }}
         env:
           TYPE: server
