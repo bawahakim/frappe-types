@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Setup Frappe bench & dependencies
-        uses: ./.github/actions/setup-frappe-bench
+        uses: ./.github/workflows/_setup.yml
 
       - name: Run ${{ matrix.test }} tests
         working-directory: ~/frappe-bench
