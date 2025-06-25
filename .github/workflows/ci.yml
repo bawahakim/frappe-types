@@ -109,9 +109,11 @@ jobs:
         run: |
           # Add 'test_site' to /etc/hosts 
           echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
-          
-          bench --site test_site set-config allow_tests true
-          bench --site test_site set-config developer_mode 1
-          bench --site test_site run-ui-tests frappe_types --headless
+
+          bench use test_site
+          bench execute frappe.utils.install.complete_setup_wizard
+          bench set-config allow_tests true
+          bench set-config developer_mode 1
+          bench run-ui-tests frappe_types --headless
         env:
           TYPE: server
