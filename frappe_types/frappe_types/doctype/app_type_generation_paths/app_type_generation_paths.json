@@ -9,29 +9,32 @@
   "fields": [
     {
       "fieldname": "app_name",
-      "fieldtype": "Data",
+      "fieldtype": "Select",
       "in_list_view": 1,
       "label": "App Name",
-      "reqd": 1
+      "reqd": 1,
+      "unique": 1
     },
     {
       "fieldname": "app_path",
       "fieldtype": "Data",
       "in_list_view": 1,
       "label": "App Path",
-      "reqd": 1
+      "reqd": 0,
+      "_comment_reqd": "Leave reqd=0 — field is validated manually in client/server validate based on export_to_root"
     }
   ],
   "index_web_pages_for_search": 1,
   "istable": 1,
   "links": [],
-  "modified": "2023-06-19 11:58:35.450734",
+  "modified": "2025-06-23 07:41:42.509543",
   "modified_by": "Administrator",
   "module": "Frappe Types",
   "name": "App Type Generation Paths",
   "naming_rule": "Autoincrement",
   "owner": "Administrator",
   "permissions": [],
+  "row_format": "Dynamic",
   "sort_field": "modified",
   "sort_order": "DESC",
   "states": []

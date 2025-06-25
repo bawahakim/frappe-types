@@ -5,7 +5,11 @@
   "doctype": "DocType",
   "editable_grid": 1,
   "engine": "InnoDB",
-  "field_order": ["type_settings", "include_custom_doctypes", "base_output_path"],
+  "field_order": [
+    "type_settings",
+    "include_custom_doctypes",
+    "base_output_path"
+  ],
   "fields": [
     {
       "fieldname": "type_settings",
@@ -24,9 +28,24 @@
       "fieldname": "base_output_path",
       "fieldtype": "Data",
       "label": "Base Output Path",
-      "description": "Base output path for type generation",
-      "default": "../apps",
+      "description": "Base output path for type generation. Primarily used for testing",
+      "default": "",
       "hidden": 1
+    },
+    {
+      "fieldname": "export_to_root",
+      "fieldtype": "Check",
+      "default": 0,
+      "label": "Export To Root",
+      "description": "Export generated types to the root bench directory, optionally with a subdirectory defined by Root Output Path"
+    },
+    {
+      "fieldname": "root_output_path",
+      "fieldtype": "Data",
+      "label": "Root Output Subdirectory",
+      "description": "Root output subdirectory, so if 'types', will resolve to e.g. frappe-bench/types",
+      "default": "types",
+      "dependencies": "export_to_root"
     }
   ],
   "index_web_pages_for_search": 1,

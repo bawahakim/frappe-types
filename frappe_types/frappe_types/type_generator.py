@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -5,7 +6,7 @@ import frappe
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
 
-from .utils import create_file, is_developer_mode_enabled, to_ts_type
+from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
 
 
 class TypeGenerator:
@@ -31,20 +32,27 @@ class TypeGenerator:
 		*,
 		generate_child_tables: bool = False,
 		custom_fields: bool = False,
-		base_output_path: str | None = None,
 	) -> None:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
 
-		if not base_output_path:
-			settings = self._get_type_generation_settings()
-			base_output_path = settings.get("base_output_path")
-			if not base_output_path:
-				print("Base output path not found in Type Generation Settings, defaulting to '../apps'")
-				base_output_path = "../apps"
+		settings = self._get_type_generation_settings()
+		base_output_path = settings.get("base_output_path")
+		if base_output_path:
+			self.base_output_path = base_output_path
 
-		self.base_output_path = base_output_path
+		should_export_to_root = settings.get("export_to_root")
+		print("should export to root: ", should_export_to_root)
+		print("base output path: ", base_output_path)
+		if not should_export_to_root and not base_output_path:
+			print("Setting base output path to '../apps'")
+			self.base_output_path = "../apps"
+
+		if not hasattr(self, "base_output_path"):
+			self.base_output_path = ""
+
+		print("final base output path: ", self.base_output_path)
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -116,6 +124,23 @@ class TypeGenerator:
 		if module_path:
 			self._generate_type_definition_file(doctype, module_path)
 
+	def export_all_apps(self):
+		"""Generate type definitions for all configured apps."""
+		settings = self._get_type_generation_settings()
+		type_settings = settings.get("type_settings", [])
+		for ts in type_settings:
+			app_name = ts["app_name"]
+			print(f"Generating type definitions for app {app_name}")
+			generator = type(self)(
+				app_name,
+				generate_child_tables=self.generate_child_tables,
+				custom_fields=self.custom_fields,
+			)
+			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
+			print("Modules:", modules)
+			for module in modules:
+				generator.generate_module(module)
+
 	# ---------------------------------------------------------------------
 	# Private methods
 	# ---------------------------------------------------------------------
@@ -148,10 +173,23 @@ class TypeGenerator:
 		return bool(is_paused_config)
 
 	def _get_module_path(self, app_name: str, module_name: str) -> Path | None:
-		"""Return the directory `<app>/<custom path>/types/<Module>` creating any
-		missing directories along the way.  Returns *None* when the DocType
-		should be ignored (e.g. core apps, unconfigured app, or missing app
-		path)."""
+		"""Return the directory for type output. If export_to_root is set, always use the root types dir."""
+		settings = self._get_type_generation_settings()
+		if settings.get("export_to_root"):
+			# Determine root output path
+			root_path = settings.get("root_output_path", "types")
+			path_obj = Path(os.path.join(self.base_output_path, root_path, self.app_name))
+
+			# If relative, assume bench root
+			if not path_obj.is_absolute():
+				bench_root = get_bench_root_path()
+				path_obj = Path(os.path.join(bench_root, root_path))
+
+			path_obj.mkdir(parents=True, exist_ok=True)
+			module_path = path_obj / to_ts_type(module_name)
+			module_path.mkdir(exist_ok=True)
+
+			return module_path
 
 		app_path = Path(self.base_output_path) / app_name
 		if not app_path.exists():
@@ -269,7 +307,10 @@ class TypeGenerator:
 
 	def _get_field_type_definition(self, field: DocField, doctype: DocType, module_path: Path):
 		field_type, import_statement = self._get_field_type(field, doctype, module_path)
-		return field.fieldname + self._get_required(field) + ": " + field_type, import_statement
+		return (
+			field.fieldname + self._get_required(field) + ": " + field_type,
+			import_statement,
+		)
 
 	def _get_field_type(self, field: DocField, doctype: DocType, module_path: Path):
 		basic_fieldtypes = {
@@ -436,3 +477,14 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 def generate_types_for_module(module, app_name, generate_child_tables=False):
 	generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables)
 	generator.generate_module(module)
+
+
+@frappe.whitelist()
+def export_all_apps():
+	type_settings = frappe.get_single("Type Generation Settings")
+	type_settings.base_output_path = ""
+	type_settings.save()
+	generator = TypeGenerator(app_name="")
+	generator.export_all_apps()
+
+	return "Success"

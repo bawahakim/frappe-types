@@ -51,6 +51,9 @@ class TestTypeGenerator(FrappeTestCase):
 		for file_path in TestTypeGeneratorUtils.get_types_module_files_paths():
 			self.assertFalse(os.path.exists(file_path))
 
+		for file_path in TestTypeGeneratorUtils.get_app_2_output_file_paths():
+			self.assertFalse(os.path.exists(file_path))
+
 		with open(self.generated_typescript_file_path) as f:
 			content = f.read()
 			self.assertEqual(
@@ -79,6 +82,9 @@ class TestTypeGenerator(FrappeTestCase):
 
 		for file_path in TestTypeGeneratorUtils.get_types_module_files_paths():
 			self.assertTrue(os.path.exists(file_path))
+
+		for file_path in TestTypeGeneratorUtils.get_app_2_output_file_paths():
+			self.assertFalse(os.path.exists(file_path))
 
 		self.assertTrue(os.path.exists(self.child_table_typescript_file_path))
 
@@ -114,3 +120,25 @@ class TestTypeGenerator(FrappeTestCase):
 		generator.generate_doctype(self.doctype_name)
 
 		self.assertFalse(os.path.exists(self.generated_typescript_file_path))
+
+	def test_export_to_root(self):
+		settings = frappe.get_single("Type Generation Settings")
+		settings.export_to_root = 1
+		settings.root_output_path = "types"
+		settings.save()
+
+		generator = self.instantiate_type_generator()
+		generator.generate_doctype(self.doctype_name)
+
+		with open(self.generated_typescript_file_path) as f:
+			content = f.read()
+			self.assertEqual(
+				sanitize_content(content), TestTypeGeneratorUtils.get_expected_ts_file(with_child_table=False)
+			)
+
+	def test_export_all_apps(self):
+		generator = TypeGenerator(app_name="")
+		generator.export_all_apps()
+
+		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
+			self.assertTrue(os.path.exists(file_path))

@@ -1,0 +1,15 @@
+{
+  "name": "frappe_types",
+  "version": "1.0.0",
+  "description": "Typescript type definition generator for Frappe DocTypes.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@testing-library/cypress": "^10.0.3",
+    "cypress": "^13.7.3"
+  }
+}
