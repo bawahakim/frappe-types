@@ -107,6 +107,9 @@ jobs:
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
+          # Add 'test_site' to /etc/hosts 
+          echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
+          
           bench --site test_site set-config allow_tests true
           bench --site test_site set-config developer_mode 1
           bench --site test_site run-ui-tests frappe_types --headless
