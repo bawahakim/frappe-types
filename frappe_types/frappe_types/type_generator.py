@@ -36,6 +36,7 @@ class TypeGenerator:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
+		self.did_generate_type_map = False
 
 		settings = self._get_type_generation_settings()
 		base_output_path = settings.get("base_output_path")
@@ -43,16 +44,12 @@ class TypeGenerator:
 			self.base_output_path = base_output_path
 
 		should_export_to_root = settings.get("export_to_root")
-		print("should export to root: ", should_export_to_root)
-		print("base output path: ", base_output_path)
 		if not should_export_to_root and not base_output_path:
 			print("Setting base output path to '../apps'")
 			self.base_output_path = "../apps"
 
 		if not hasattr(self, "base_output_path"):
 			self.base_output_path = ""
-
-		print("final base output path: ", self.base_output_path)
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -72,6 +69,8 @@ class TypeGenerator:
 			module_path = self._get_module_path(self.app_name, module_name)
 			if module_path:
 				self._generate_type_definition_file(doc, module_path)
+				if not self.did_generate_type_map:
+					self.write_doctype_map()
 
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
@@ -96,6 +95,9 @@ class TypeGenerator:
 			if len(doctypes) > 0:
 				for doctype in doctypes:
 					self.generate_doctype(doctype)
+
+				if not self.did_generate_type_map:
+					self.write_doctype_map()
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
 			print(f"An error occurred while generating type for {module} {err_msg}")
@@ -137,9 +139,11 @@ class TypeGenerator:
 				custom_fields=self.custom_fields,
 			)
 			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
-			print("Modules:", modules)
 			for module in modules:
 				generator.generate_module(module)
+
+			# Reset the flag so next app can also export it's map
+			self.did_generate_type_map = False
 
 	# ---------------------------------------------------------------------
 	# Private methods
@@ -472,6 +476,7 @@ class TypeGenerator:
 		# Write file
 		map_file = output_base / "DocTypeMap.ts"
 		create_file(map_file, content)
+		self.did_generate_type_map = True
 
 
 # Should probably be renamed to `update_type_definition_file`
