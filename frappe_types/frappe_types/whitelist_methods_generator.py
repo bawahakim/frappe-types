@@ -1,7 +1,11 @@
 import ast
 from pathlib import Path
 
+
 # ─── Helpers for mapping Python annotations → TS types ─────────────────────────
+def generate_interface(root: Path, out: Path):
+	mapping = extract_all(root)
+	write_interface(mapping, out)
 
 
 def map_py_type(node: ast.AST) -> str:
@@ -129,10 +133,3 @@ def write_interface(mapping: dict[str, list[tuple[str, str, bool]]], out: Path):
 	lines.append("export {};")
 	out.write_text("\n".join(lines), encoding="utf-8")
 	print(f"Wrote interface with {len(mapping)} entries to {out}")
-
-
-if __name__ == "__main__":
-	ROOT = Path("../")
-	OUT = Path("frappe-whitelist-paths.d.ts")
-	mapping = extract_all(ROOT)
-	write_interface(mapping, OUT)
