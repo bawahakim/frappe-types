@@ -1,4 +1,3 @@
-import os
 import subprocess
 from enum import Enum
 from pathlib import Path
@@ -48,17 +47,22 @@ class TypeGenerator:
 		self.type_generation_method = None
 
 		settings = self._get_type_generation_settings()
+		self.export_to_root: bool = settings.get("export_to_root")
 		base_output_path = settings.get("base_output_path")
+
 		if base_output_path:
-			self.base_output_path = base_output_path
+			self.base_output_path = Path(base_output_path)
+		else:
+			self.base_output_path = get_bench_root_path()
+			if not self.export_to_root:
+				self.base_output_path = self.base_output_path / "apps"
 
-		should_export_to_root = settings.get("export_to_root")
-		if not should_export_to_root and not base_output_path:
-			print("Setting base output path to '../apps'")
-			self.base_output_path = "../apps"
+		# should_export_to_root = settings.get("export_to_root")
+		# if not should_export_to_root and not base_output_path:
+		# 	self.base_output_path = get_bench_root_path() / "apps"
 
-		if not hasattr(self, "base_output_path"):
-			self.base_output_path = ""
+		# if not hasattr(self, "base_output_path"):
+		# 	self.base_output_path = ""
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -174,20 +178,32 @@ class TypeGenerator:
 
 		# Export whitelist methods interface
 		print("Generating whitelist methods interface")
-		bench_root = Path(get_bench_root_path())
 		# Use only apps specified in type_generation_settings
-		app_roots = [bench_root / "apps" / ts["app_name"] for ts in type_settings]
-		# Determine output directory for whitelist interface
-		if export_to_root:
-			root_path = settings.get("root_output_path", "types")
-			out_dir = Path(self.base_output_path) / root_path
-			if not out_dir.is_absolute():
-				out_dir = Path(get_bench_root_path()) / root_path
-		else:
+		app_roots = [Path(self.base_output_path / "apps" / ts["app_name"]) for ts in type_settings]
+
+		out_file_name = "FrappeWhitelistedMethods.d.ts"
+
+		if not export_to_root:
 			# Write whitelist interface to bench root types directory
-			out_dir = Path(get_bench_root_path()) / "types"
-		out_dir.mkdir(parents=True, exist_ok=True)
-		out_file = out_dir / "FrappeWhitelistedMethods.d.ts"
+			for ts in type_settings:
+				root = Path(self.base_output_path / "apps" / ts["app_name"])
+				if root.exists():
+					out_dir = root / str(ts["app_path"]) / "types"
+					print("outdir", out_dir)
+					print("root", root)
+					out_dir.mkdir(parents=True, exist_ok=True)
+					out_file = out_dir / out_file_name
+					generate_interface(root, out_file)
+					return
+				else:
+					print(f"Skipping whitelist generation for non-existent app path: {root}")
+			return
+
+		# Determine output directory for whitelist interface
+		root_path = settings.get("root_output_path", "types")
+		out_dir = self.base_output_path / root_path
+
+		out_file = out_dir / out_file_name
 
 		# Aggregate whitelist methods mapping for configured apps
 		mapping: dict[str, list[tuple[str, str, bool]]] = {}
@@ -235,12 +251,11 @@ class TypeGenerator:
 		if settings.get("export_to_root"):
 			# Determine root output path
 			root_path = settings.get("root_output_path", "types")
-			path_obj = Path(os.path.join(self.base_output_path, root_path, self.app_name))
+			path_obj = self.base_output_path / root_path / self.app_name
 
 			# If relative, assume bench root
 			if not path_obj.is_absolute():
-				bench_root = get_bench_root_path()
-				path_obj = Path(os.path.join(bench_root, root_path))
+				path_obj = self.base_output_path / root_path / self.app_name
 
 			path_obj.mkdir(parents=True, exist_ok=True)
 			module_path = path_obj / to_ts_type(module_name)
@@ -248,7 +263,7 @@ class TypeGenerator:
 
 			return module_path
 
-		app_path = Path(self.base_output_path) / app_name
+		app_path = self.base_output_path / app_name
 		if not app_path.exists():
 			print("App path does not exist - ignoring type generation")
 			return None
@@ -478,13 +493,10 @@ class TypeGenerator:
 		export_to_root = settings.get("export_to_root")
 		if export_to_root:
 			root_path = settings.get("root_output_path", "types")
-			base_path = Path(os.path.join(self.base_output_path, root_path))
-			if not base_path.is_absolute():
-				bench_root = get_bench_root_path()
-				base_path = Path(os.path.join(bench_root, root_path))
+			base_path = self.base_output_path / root_path
 			output_base = base_path
 		else:
-			app_path = Path(self.base_output_path) / self.app_name
+			app_path = self.base_output_path / self.app_name
 			type_settings = settings.get("type_settings", [])
 			type_setting = next((ts for ts in type_settings if ts["app_name"] == self.app_name), None)
 			if not type_setting:
