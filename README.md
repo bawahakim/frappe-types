@@ -15,17 +15,21 @@ Typescript type definition generator for Frappe DocTypes.
 To use the app, install it on your local development bench:
 
 ```bash
-$ bench get-app https://github.com/The-Commit-Company/frappe-types
+$ bench get-app https://github.com/bawahakim/frappe-types
 $ bench --site mysite.test install-app frappe_types
 ```
 
 After installing the app, search for "Type Generation Settings" in Desk using the Awesomebar. You need to add the app name and path where you want to save your Typescript type definition files. frappe-types will only run on those app whose app name and path are added in these settings.
 
+You can choose to export to root, which ignores each app’s path and places all generated types in a single location. When this option is enabled, types will be saved relative to your bench root folder. You can configure the output path in the Type Generation Settings DocType after enabling the `Export To Root` option.
+
 <img width="1372" alt="Screenshot 2023-01-12 at 2 30 31 PM" src="https://user-images.githubusercontent.com/59503001/212024507-3197ecfb-e243-4695-a96c-b86d0c1113b4.png">
+
+You can then click on the "Generate All" button to generate types for all apps specified in the Type Generation Settings.
 
 That's it.
 
-Now whenever you create or update any DocType on your local machine, the app will generate `.ts` files under at the following path: `app/src/types/<module_def>/<doctype_name>.ts`.
+Now whenever you create or update any DocType on your local machine, the app will generate `.d.ts` files under at the following path: `app/src/types/<module_def>/<doctype_name>.d.ts`.
 
 <br/>
 
@@ -80,7 +84,7 @@ Let's say you create a DocType in a module called "Project Management" called "P
 
 <br/>
 
-The app will automatically create a file called `Projects.ts` and `ProjectUserTable.ts` at the path `<your_app_folder>/types/ProjectManagement` like this:
+The app will automatically create a file called `Projects.d.ts` and `ProjectUserTable.d.ts` at the path `<your_app_folder>/types/ProjectManagement` like this:
 
 (Notice that spaces in the Module and DocType names will be removed)
 
