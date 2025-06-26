@@ -15,5 +15,4 @@
 
 // Import commands.js using ES2015 syntax:
 // import './commands'
-/// <reference types="@types/frappe" />
 import "../../../frappe/cypress/support/commands";

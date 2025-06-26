@@ -1,5 +1,3 @@
-/// <reference types="@testing-library/cypress" />
-
 context("Type Generation Settings", () => {
 	beforeEach(() => {
 		cy.login("Administrator", "admin");
