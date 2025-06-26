@@ -189,14 +189,23 @@ class TestTypeGenerator(FrappeTestCase):
 			TestTypeGeneratorUtils.module_2,
 		)
 
-		whitelist_methods_path = (
+		whitelist_methods_path_1 = (
 			Path(TestTypeGeneratorUtils.temp_dir)
 			/ TestTypeGeneratorUtils.app_name
 			/ TestTypeGeneratorUtils.app_path_output_setting
 			/ "types"
 			/ "FrappeWhitelistedMethods.d.ts"
 		)
-		self.assertTrue(whitelist_methods_path.exists())
+		self.assertTrue(whitelist_methods_path_1.exists())
+
+		whitelist_methods_path_2 = (
+			Path(TestTypeGeneratorUtils.temp_dir)
+			/ TestTypeGeneratorUtils.app_name_2
+			/ TestTypeGeneratorUtils.app_path_output_setting
+			/ "types"
+			/ "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path_2.exists())
 
 	def test_export_all_apps_to_root(self):
 		settings = frappe.get_single("Type Generation Settings")
