@@ -6,7 +6,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from frappe_types.frappe_types.type_generator import TypeGenerator
 from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content, to_ts_type
-
+from pathlib import Path
 
 class TestTypeGenerator(FrappeTestCase):
 	@property
@@ -62,7 +62,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
@@ -103,7 +103,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 				TestTypeGeneratorUtils.test_doctype_name_2,
@@ -152,7 +152,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.temp_dir) / "types" / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
@@ -165,7 +165,7 @@ class TestTypeGenerator(FrappeTestCase):
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path_1 = os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts")
+		map_path_1 = Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts"
 		self._assert_doctype_map(
 			map_path_1,
 			[
@@ -175,10 +175,7 @@ class TestTypeGenerator(FrappeTestCase):
 			],
 		)
 
-		map_path_2 = os.path.join(
-			TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2),
-			"DocTypeMap.d.ts",
-		)
+		map_path_2 = Path(TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2)) / "DocTypeMap.d.ts"
 		self._assert_doctype_map(
 			map_path_2,
 			[
@@ -199,7 +196,7 @@ class TestTypeGenerator(FrappeTestCase):
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path = os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts")
+		map_path = Path(TestTypeGeneratorUtils.temp_dir) / "types" / "DocTypeMap.d.ts"
 		self._assert_doctype_map(
 			map_path,
 			[
@@ -217,10 +214,10 @@ class TestTypeGenerator(FrappeTestCase):
 		)
 
 	def _assert_doctype_map(
-		self, map_path: str, doctypes: list[str], module: str = TestTypeGeneratorUtils.module
+		self, map_path: Path, doctypes: list[str], module: str = TestTypeGeneratorUtils.module
 	):
-		self.assertTrue(os.path.exists(map_path))
-		content = sanitize_content(open(map_path).read())
+		self.assertTrue(map_path.exists())
+		content = sanitize_content(map_path.read_text())
 		self.assertIn("declare global {\n  interface DocTypeMap {", content)
 		for orig in doctypes:
 			ts = to_ts_type(orig)
