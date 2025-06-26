@@ -8,6 +8,7 @@ from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
 
 from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
+from .whitelist_methods_generator import generate_interface as generate_whitelist_interface
 
 
 class TypeGenerationMethod(Enum):
@@ -170,6 +171,23 @@ class TypeGenerator:
 		if export_to_root:
 			# write combined root map
 			self._write_doctype_map()
+
+		# Export whitelist methods interface
+		print("Generating whitelist methods interface")
+		bench_root = Path(get_bench_root_path())
+		search_root = bench_root / "apps"
+		# Determine output directory for whitelist interface
+		if export_to_root:
+			root_path = settings.get("root_output_path", "types")
+			out_dir = Path(self.base_output_path) / root_path
+			if not out_dir.is_absolute():
+				out_dir = Path(get_bench_root_path()) / root_path
+		else:
+			# Write whitelist interface to bench root types directory
+			out_dir = Path(get_bench_root_path()) / "types"
+		out_dir.mkdir(parents=True, exist_ok=True)
+		out_file = out_dir / "FrappeWhitelistedPaths.d.ts"
+		generate_whitelist_interface(search_root, out_file)
 
 	# ---------------------------------------------------------------------
 	# Private methods
