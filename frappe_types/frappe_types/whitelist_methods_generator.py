@@ -108,23 +108,31 @@ def extract_all(root: Path) -> dict[str, list[tuple[str, str, bool]]]:
 
 
 def write_interface(mapping: dict[str, list[tuple[str, str, bool]]], out: Path):
-	lines = ["// AUTO-GENERATED — do not edit by hand", "export interface FrappeWhitelistedPaths {"]
+	lines = [
+		"// AUTO-GENERATED — do not edit by hand",
+		"",
+		"declare global {",
+		"  interface FrappeWhitelistedPaths {",
+	]
 	for path, params in sorted(mapping.items()):
 		if params:
-			lines.append(f'  "{path}": ' + "{")
+			lines.append(f'    "{path}": ' + "{")
 			for name, ts_type, is_opt in params:
 				opt = "?" if is_opt else ""
-				lines.append(f"    {name}{opt}: {ts_type};")
-			lines.append("  };")
+				lines.append(f"      {name}{opt}: {ts_type};")
+			lines.append("    };")
 		else:
-			lines.append(f'  "{path}": {{}};')
+			lines.append(f'    "{path}": {{}};')
+	lines.append("  }")
 	lines.append("}")
+	lines.append("")
+	lines.append("export {};")
 	out.write_text("\n".join(lines), encoding="utf-8")
 	print(f"Wrote interface with {len(mapping)} entries to {out}")
 
 
 if __name__ == "__main__":
 	ROOT = Path("../")
-	OUT = Path("frappe-whitelist-paths.ts")
+	OUT = Path("frappe-whitelist-paths.d.ts")
 	mapping = extract_all(ROOT)
 	write_interface(mapping, OUT)
