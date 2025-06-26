@@ -48,6 +48,7 @@ class TypeGenerator:
 
 		settings = self._get_type_generation_settings()
 		self.export_to_root: bool = settings.get("export_to_root")
+		self.root_output_path: str = settings.get("root_output_path", "types")
 		base_output_path = settings.get("base_output_path")
 
 		if base_output_path:
@@ -200,8 +201,7 @@ class TypeGenerator:
 			return
 
 		# Determine output directory for whitelist interface
-		root_path = settings.get("root_output_path", "types")
-		out_dir = self.base_output_path / root_path
+		out_dir = self.base_output_path / self.root_output_path
 
 		out_file = out_dir / out_file_name
 
@@ -247,16 +247,9 @@ class TypeGenerator:
 
 	def _get_module_path(self, app_name: str, module_name: str) -> Path | None:
 		"""Return the directory for type output. If export_to_root is set, always use the root types dir."""
-		settings = self._get_type_generation_settings()
-		if settings.get("export_to_root"):
+		if self.export_to_root:
 			# Determine root output path
-			root_path = settings.get("root_output_path", "types")
-			path_obj = self.base_output_path / root_path / self.app_name
-
-			# If relative, assume bench root
-			if not path_obj.is_absolute():
-				path_obj = self.base_output_path / root_path / self.app_name
-
+			path_obj = self.base_output_path / self.root_output_path / self.app_name
 			path_obj.mkdir(parents=True, exist_ok=True)
 			module_path = path_obj / to_ts_type(module_name)
 			module_path.mkdir(exist_ok=True)
