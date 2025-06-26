@@ -116,7 +116,7 @@ def write_interface(mapping: dict[str, list[tuple[str, str, bool]]], out: Path):
 		"// AUTO-GENERATED — do not edit by hand",
 		"",
 		"declare global {",
-		"  interface FrappeWhitelistedPaths {",
+		"  interface FrappeWhitelistedMethods {",
 	]
 	for path, params in sorted(mapping.items()):
 		if params:

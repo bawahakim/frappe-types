@@ -186,7 +186,7 @@ class TypeGenerator:
 			# Write whitelist interface to bench root types directory
 			out_dir = Path(get_bench_root_path()) / "types"
 		out_dir.mkdir(parents=True, exist_ok=True)
-		out_file = out_dir / "FrappeWhitelistedPaths.d.ts"
+		out_file = out_dir / "FrappeWhitelistedMethods.d.ts"
 		generate_whitelist_interface(search_root, out_file)
 
 	# ---------------------------------------------------------------------
