@@ -191,7 +191,6 @@ class TestTypeGenerator(FrappeTestCase):
 
 		whitelist_methods_path = (
 			Path(TestTypeGeneratorUtils.temp_dir)
-			/ "apps"
 			/ TestTypeGeneratorUtils.app_name
 			/ TestTypeGeneratorUtils.app_path_output_setting
 			/ "types"

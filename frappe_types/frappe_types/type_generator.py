@@ -153,7 +153,6 @@ class TypeGenerator:
 		"""Generate type definitions for all configured apps."""
 		settings = self._get_type_generation_settings()
 		type_settings = settings.get("type_settings", [])
-		export_to_root = settings.get("export_to_root")
 		for ts in type_settings:
 			app_name = ts["app_name"]
 			print(f"Generating type definitions for app {app_name}")
@@ -167,43 +166,40 @@ class TypeGenerator:
 			for module in modules:
 				generator.generate_module(module)
 
-			if export_to_root:
+			if self.export_to_root:
 				# accumulate doctypes for root map
 				self.doctype_map.extend(generator.doctype_map)
 			else:
 				# write per-app map
 				generator._write_doctype_map()
-		if export_to_root:
+		if self.export_to_root:
 			# write combined root map
 			self._write_doctype_map()
 
 		# Export whitelist methods interface
 		print("Generating whitelist methods interface")
-		# Use only apps specified in type_generation_settings
-		app_roots = [Path(self.base_output_path / "apps" / ts["app_name"]) for ts in type_settings]
 
 		out_file_name = "FrappeWhitelistedMethods.d.ts"
 
-		if not export_to_root:
+		if not self.export_to_root:
 			# Write whitelist interface to bench root types directory
 			for ts in type_settings:
-				root = Path(self.base_output_path / "apps" / ts["app_name"])
+				root = Path(self.base_output_path / ts["app_name"])
 				if root.exists():
 					out_dir = root / str(ts["app_path"]) / "types"
-					print("outdir", out_dir)
-					print("root", root)
 					out_dir.mkdir(parents=True, exist_ok=True)
 					out_file = out_dir / out_file_name
 					generate_interface(root, out_file)
-					return
 				else:
 					print(f"Skipping whitelist generation for non-existent app path: {root}")
 			return
 
 		# Determine output directory for whitelist interface
 		out_dir = self.base_output_path / self.root_output_path
-
 		out_file = out_dir / out_file_name
+
+		# Use only apps specified in type_generation_settings
+		app_roots = [Path(self.base_output_path / "apps" / ts["app_name"]) for ts in type_settings]
 
 		# Aggregate whitelist methods mapping for configured apps
 		mapping: dict[str, list[tuple[str, str, bool]]] = {}
