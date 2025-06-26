@@ -479,10 +479,11 @@ class TypeGenerator:
 				seen.add(ts_name)
 
 		# Build DocTypeMap type
-		lines = ["export type DocTypeMap = {"]
+		lines = ["declare global {\n  interface DocTypeMap {"]
 		for orig, ts_name, _ in dt_map:
-			lines.append(f'  "{orig}": {ts_name};')
-		lines.append("}")
+			lines.append(f'    "{orig}": {ts_name};')
+		lines.append("  }\n}\n")
+		lines.append("export {};")
 		content = "".join(imports) + "\n" + "\n".join(lines)
 
 		# Write file
