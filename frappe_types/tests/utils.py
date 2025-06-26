@@ -340,17 +340,8 @@ class TestTypeGeneratorUtils:
 	def _render_base_template(cls, fields: str, import_child_table: str) -> str:
 		return f"""\
 {import_child_table}
-export interface {to_ts_type(cls.test_doctype_name)}{{
+export interface {to_ts_type(cls.test_doctype_name)} extends DocType {{
     name: string
-    creation: string
-    modified: string
-    owner: string
-    modified_by: string
-    docstatus: 0 | 1 | 2
-    parent?: string
-    parentfield?: string
-    parenttype?: string
-    idx?: number
 {fields}
 }}
 """

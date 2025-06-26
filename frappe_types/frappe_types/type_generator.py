@@ -262,21 +262,13 @@ class TypeGenerator:
 		import_lines: list[str] = []
 
 		interface_name = to_ts_type(doctype.name)
-		lines: list[str] = [f"export interface {interface_name}{{"]
+		# DocType is a global interface defined in @frappe/types
+		lines: list[str] = [f"export interface {interface_name} extends DocType {{"]
 
-		# --- Core document fields
+		# --- We override the name field to be consistent with the naming rule
 		name_type = "number" if doctype.naming_rule == "Autoincrement" else "string"
 		core_fields = [
 			f"\tname: {name_type}",
-			"\tcreation: string",
-			"\tmodified: string",
-			"\towner: string",
-			"\tmodified_by: string",
-			"\tdocstatus: 0 | 1 | 2",
-			"\tparent?: string",
-			"\tparentfield?: string",
-			"\tparenttype?: string",
-			"\tidx?: number",
 		]
 		lines.extend(core_fields)
 
