@@ -1,5 +1,6 @@
 import os
 import subprocess
+from enum import Enum
 from pathlib import Path
 
 import frappe
@@ -7,6 +8,12 @@ from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
 
 from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
+
+
+class TypeGenerationMethod(Enum):
+	DOCTYPES = "doctypes"
+	MODULES = "modules"
+	ALL_APPS = "all_apps"
 
 
 class TypeGenerator:
@@ -36,6 +43,8 @@ class TypeGenerator:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
+		self.doctype_map = []
+		self.type_generation_method = None
 
 		settings = self._get_type_generation_settings()
 		base_output_path = settings.get("base_output_path")
@@ -43,8 +52,6 @@ class TypeGenerator:
 			self.base_output_path = base_output_path
 
 		should_export_to_root = settings.get("export_to_root")
-		print("should export to root: ", should_export_to_root)
-		print("base output path: ", base_output_path)
 		if not should_export_to_root and not base_output_path:
 			print("Setting base output path to '../apps'")
 			self.base_output_path = "../apps"
@@ -52,13 +59,14 @@ class TypeGenerator:
 		if not hasattr(self, "base_output_path"):
 			self.base_output_path = ""
 
-		print("final base output path: ", self.base_output_path)
-
 	# ---------------------------------------------------------------------
 	# Public API
 	# ---------------------------------------------------------------------
 	def generate_doctype(self, doctype: str):
 		"""Generate a `.ts` type definition file for a single DocType."""
+		if not self.type_generation_method:
+			self.type_generation_method = TypeGenerationMethod.DOCTYPES
+
 		try:
 			# custom_fields True means that the generate .ts file for custom fields with original fields
 			doc = frappe.get_meta(doctype) if self.custom_fields else frappe.get_doc("DocType", doctype)
@@ -72,6 +80,12 @@ class TypeGenerator:
 			module_path = self._get_module_path(self.app_name, module_name)
 			if module_path:
 				self._generate_type_definition_file(doc, module_path)
+				# Accumulate this DocType for the map
+				ts_name = to_ts_type(doc.name)
+				module_dir = to_ts_type(module_name)
+				self.doctype_map.append((doc.name, ts_name, module_dir))
+				if self.type_generation_method == TypeGenerationMethod.DOCTYPES:
+					self._write_doctype_map()
 
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
@@ -79,6 +93,8 @@ class TypeGenerator:
 
 	def generate_module(self, module: str):
 		"""Generate type definition files for *all* DocTypes inside *module*."""
+		if not self.type_generation_method:
+			self.type_generation_method = TypeGenerationMethod.MODULES
 		try:
 			child_tables = [
 				doctype["name"]
@@ -96,6 +112,9 @@ class TypeGenerator:
 			if len(doctypes) > 0:
 				for doctype in doctypes:
 					self.generate_doctype(doctype)
+
+				if self.type_generation_method == TypeGenerationMethod.MODULES:
+					self._write_doctype_map()
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
 			print(f"An error occurred while generating type for {module} {err_msg}")
@@ -128,6 +147,7 @@ class TypeGenerator:
 		"""Generate type definitions for all configured apps."""
 		settings = self._get_type_generation_settings()
 		type_settings = settings.get("type_settings", [])
+		export_to_root = settings.get("export_to_root")
 		for ts in type_settings:
 			app_name = ts["app_name"]
 			print(f"Generating type definitions for app {app_name}")
@@ -136,10 +156,20 @@ class TypeGenerator:
 				generate_child_tables=self.generate_child_tables,
 				custom_fields=self.custom_fields,
 			)
+			generator.type_generation_method = TypeGenerationMethod.ALL_APPS
 			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
-			print("Modules:", modules)
 			for module in modules:
 				generator.generate_module(module)
+
+			if export_to_root:
+				# accumulate doctypes for root map
+				self.doctype_map.extend(generator.doctype_map)
+			else:
+				# write per-app map
+				generator._write_doctype_map()
+		if export_to_root:
+			# write combined root map
+			self._write_doctype_map()
 
 	# ---------------------------------------------------------------------
 	# Private methods
@@ -422,6 +452,51 @@ class TypeGenerator:
 			return False
 
 		return True
+
+	def _write_doctype_map(self):
+		"""Generate a TypeScript type mapping DocType names to TS interfaces."""
+		settings = self._get_type_generation_settings()
+		export_to_root = settings.get("export_to_root")
+		if export_to_root:
+			root_path = settings.get("root_output_path", "types")
+			base_path = Path(os.path.join(self.base_output_path, root_path))
+			if not base_path.is_absolute():
+				bench_root = get_bench_root_path()
+				base_path = Path(os.path.join(bench_root, root_path))
+			output_base = base_path
+		else:
+			app_path = Path(self.base_output_path) / self.app_name
+			type_settings = settings.get("type_settings", [])
+			type_setting = next((ts for ts in type_settings if ts["app_name"] == self.app_name), None)
+			if not type_setting:
+				print(f"No type setting found for app {self.app_name} - skipping DocTypeMap")
+				return
+			output_base = app_path / type_setting["app_path"] / "types"
+
+		# Collect doctypes generated so far
+		dt_map = self.doctype_map
+		# Ensure unique entries
+		dt_map = list(set(dt_map))
+
+		# Build import statements
+		seen = set()
+		imports = []
+		for _, ts_name, module_dir in dt_map:
+			if ts_name not in seen:
+				imports.append(f"import {{ {ts_name} }} from './{module_dir}/{ts_name}';\n")
+				seen.add(ts_name)
+
+		# Build DocTypeMap type
+		lines = ["export type DocTypeMap = {"]
+		for orig, ts_name, _ in dt_map:
+			lines.append(f'  "{orig}": {ts_name};')
+		lines.append("}")
+		content = "".join(imports) + "\n" + "\n".join(lines)
+
+		# Write file
+		map_file = output_base / "DocTypeMap.ts"
+		create_file(map_file, content)
+		self.doctype_map = []
 
 
 # Should probably be renamed to `update_type_definition_file`
