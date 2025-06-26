@@ -532,7 +532,9 @@ def after_migrate():
 
 
 @frappe.whitelist()
-def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, custom_fields=False):
+def generate_types_for_doctype(
+	doctype: str, app_name: str, generate_child_tables: bool = False, custom_fields: bool = False
+):
 	generator = TypeGenerator(
 		app_name,
 		generate_child_tables=generate_child_tables,
@@ -542,7 +544,7 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
 
 @frappe.whitelist()
-def generate_types_for_module(module, app_name, generate_child_tables=False):
+def generate_types_for_module(module: str, app_name: str, generate_child_tables: bool = False):
 	generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables)
 	generator.generate_module(module)
 
