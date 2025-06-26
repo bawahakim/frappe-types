@@ -1,12 +1,12 @@
 import os
-import shutil
+from pathlib import Path
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from frappe_types.frappe_types.type_generator import TypeGenerator
 from frappe_types.tests.utils import TestTypeGeneratorUtils, sanitize_content, to_ts_type
-from pathlib import Path
+
 
 class TestTypeGenerator(FrappeTestCase):
 	@property
@@ -159,6 +159,8 @@ class TestTypeGenerator(FrappeTestCase):
 		)
 
 	def test_export_all_apps(self):
+		TestTypeGeneratorUtils.generate_mock_whitelist_method_file()
+
 		generator = TypeGenerator(app_name="")
 		generator.export_all_apps()
 
@@ -175,7 +177,10 @@ class TestTypeGenerator(FrappeTestCase):
 			],
 		)
 
-		map_path_2 = Path(TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2)) / "DocTypeMap.d.ts"
+		map_path_2 = (
+			Path(TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2))
+			/ "DocTypeMap.d.ts"
+		)
 		self._assert_doctype_map(
 			map_path_2,
 			[
@@ -184,11 +189,23 @@ class TestTypeGenerator(FrappeTestCase):
 			TestTypeGeneratorUtils.module_2,
 		)
 
+		whitelist_methods_path = (
+			Path(TestTypeGeneratorUtils.temp_dir)
+			/ "apps"
+			/ TestTypeGeneratorUtils.app_name
+			/ TestTypeGeneratorUtils.app_path_output_setting
+			/ "types"
+			/ "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path.exists())
+
 	def test_export_all_apps_to_root(self):
 		settings = frappe.get_single("Type Generation Settings")
 		settings.export_to_root = 1
 		settings.root_output_path = "types"
 		settings.save()
+
+		TestTypeGeneratorUtils.generate_mock_whitelist_method_file()
 
 		generator = TypeGenerator(app_name="")
 		generator.export_all_apps()
@@ -212,6 +229,11 @@ class TestTypeGenerator(FrappeTestCase):
 			],
 			TestTypeGeneratorUtils.module_2,
 		)
+
+		whitelist_methods_path = (
+			Path(TestTypeGeneratorUtils.temp_dir) / "types" / "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path.exists())
 
 	def _assert_doctype_map(
 		self, map_path: Path, doctypes: list[str], module: str = TestTypeGeneratorUtils.module
