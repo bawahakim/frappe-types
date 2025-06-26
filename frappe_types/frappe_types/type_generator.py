@@ -63,12 +63,12 @@ class TypeGenerator:
 	# Public API
 	# ---------------------------------------------------------------------
 	def generate_doctype(self, doctype: str):
-		"""Generate a `.ts` type definition file for a single DocType."""
+		"""Generate a `.d.ts` type definition file for a single DocType."""
 		if not self.type_generation_method:
 			self.type_generation_method = TypeGenerationMethod.DOCTYPES
 
 		try:
-			# custom_fields True means that the generate .ts file for custom fields with original fields
+			# custom_fields True means that the generate .d.ts file for custom fields with original fields
 			doc = frappe.get_meta(doctype) if self.custom_fields else frappe.get_doc("DocType", doctype)
 
 			if not self._can_generate(doc):
@@ -120,7 +120,7 @@ class TypeGenerator:
 			print(f"An error occurred while generating type for {module} {err_msg}")
 
 	def update_type_definition_file(self, doctype: DocType):
-		"""Update a `.ts` type definition file for a single DocType.
+		"""Update a `.d.ts` type definition file for a single DocType.
 		Called when a DocType is updated.
 		"""
 		if self._is_migrating_or_installing():
@@ -245,7 +245,7 @@ class TypeGenerator:
 
 	def _generate_type_definition_file(self, doctype: DocType, module_path: Path):
 		doctype_name = to_ts_type(doctype.name)
-		type_file_path = module_path / (doctype_name + ".ts")
+		type_file_path = module_path / (doctype_name + ".d.ts")
 		type_file_content = self._generate_type_definition_content(doctype, module_path)
 
 		create_file(type_file_path, type_file_content)
@@ -420,7 +420,7 @@ class TypeGenerator:
 			target_dir.mkdir(exist_ok=True)
 			import_path = f"../{ts_module_name}/{ts_doc_name}"
 
-		ts_file_path = target_dir / f"{ts_doc_name}.ts"
+		ts_file_path = target_dir / f"{ts_doc_name}.d.ts"
 
 		# -- Decide whether we can / should import
 		if not ts_file_path.exists():
@@ -494,7 +494,7 @@ class TypeGenerator:
 		content = "".join(imports) + "\n" + "\n".join(lines)
 
 		# Write file
-		map_file = output_base / "DocTypeMap.ts"
+		map_file = output_base / "DocTypeMap.d.ts"
 		create_file(map_file, content)
 		self.doctype_map = []
 

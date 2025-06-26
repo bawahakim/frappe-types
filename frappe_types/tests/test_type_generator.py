@@ -62,7 +62,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.ts"),
+			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
@@ -103,7 +103,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.ts"),
+			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 				TestTypeGeneratorUtils.test_doctype_name_2,
@@ -152,7 +152,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.ts"),
+			os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts"),
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
@@ -165,7 +165,7 @@ class TestTypeGenerator(FrappeTestCase):
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path_1 = os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.ts")
+		map_path_1 = os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts")
 		self._assert_doctype_map(
 			map_path_1,
 			[
@@ -177,7 +177,7 @@ class TestTypeGenerator(FrappeTestCase):
 
 		map_path_2 = os.path.join(
 			TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2),
-			"DocTypeMap.ts",
+			"DocTypeMap.d.ts",
 		)
 		self._assert_doctype_map(
 			map_path_2,
@@ -199,7 +199,7 @@ class TestTypeGenerator(FrappeTestCase):
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path = os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.ts")
+		map_path = os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts")
 		self._assert_doctype_map(
 			map_path,
 			[

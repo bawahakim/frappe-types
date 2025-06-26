@@ -80,22 +80,22 @@ class TestTypeGeneratorUtils:
 
 	@classmethod
 	def get_generated_typescript_file_path(cls) -> str:
-		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.ts")
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name)}.d.ts")
 
 	@classmethod
 	def get_child_table_typescript_file_path(cls) -> str:
-		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.doctype_child_name)}.ts")
+		return os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.doctype_child_name)}.d.ts")
 
 	@classmethod
 	def get_types_module_files_paths(cls) -> list[str]:
 		return [
-			os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name_2)}.ts"),
+			os.path.join(cls.get_types_module_path(), f"{to_ts_type(cls.test_doctype_name_2)}.d.ts"),
 		]
 
 	@classmethod
 	def get_app_2_output_file_paths(cls) -> list[str]:
 		return [
-			os.path.join(cls.get_types_module_2_path(), f"{to_ts_type(cls.test_doctype_name_3)}.ts"),
+			os.path.join(cls.get_types_module_2_path(), f"{to_ts_type(cls.test_doctype_name_3)}.d.ts"),
 		]
 
 	@classmethod
