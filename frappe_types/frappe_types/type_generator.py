@@ -147,6 +147,7 @@ class TypeGenerator:
 		"""Generate type definitions for all configured apps."""
 		settings = self._get_type_generation_settings()
 		type_settings = settings.get("type_settings", [])
+		export_to_root = settings.get("export_to_root")
 		for ts in type_settings:
 			app_name = ts["app_name"]
 			print(f"Generating type definitions for app {app_name}")
@@ -159,9 +160,16 @@ class TypeGenerator:
 			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
 			for module in modules:
 				generator.generate_module(module)
-				self.doctype_map.extend(generator.doctype_map)
 
-		self._write_doctype_map()
+			if export_to_root:
+				# accumulate doctypes for root map
+				self.doctype_map.extend(generator.doctype_map)
+			else:
+				# write per-app map
+				generator._write_doctype_map()
+		if export_to_root:
+			# write combined root map
+			self._write_doctype_map()
 
 	# ---------------------------------------------------------------------
 	# Private methods

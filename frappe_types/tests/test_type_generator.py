@@ -35,12 +35,12 @@ class TestTypeGenerator(FrappeTestCase):
 		return super().setUp()
 
 	def tearDown(self) -> None:
-		# TestTypeGeneratorUtils.cleanup()
+		TestTypeGeneratorUtils.cleanup()
 		return super().tearDown()
 
 	@classmethod
 	def tearDownClass(cls) -> None:
-		# TestTypeGeneratorUtils.cleanup()
+		TestTypeGeneratorUtils.cleanup()
 		return super().tearDownClass()
 
 	def test_generate_types_for_doctype(self):
@@ -181,6 +181,35 @@ class TestTypeGenerator(FrappeTestCase):
 		)
 		self._assert_doctype_map(
 			map_path_2,
+			[
+				TestTypeGeneratorUtils.test_doctype_name_3,
+			],
+			TestTypeGeneratorUtils.module_2,
+		)
+
+	def test_export_all_apps_to_root(self):
+		settings = frappe.get_single("Type Generation Settings")
+		settings.export_to_root = 1
+		settings.root_output_path = "types"
+		settings.save()
+
+		generator = TypeGenerator(app_name="")
+		generator.export_all_apps()
+
+		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
+			self.assertTrue(os.path.exists(file_path))
+
+		map_path = os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.ts")
+		self._assert_doctype_map(
+			map_path,
+			[
+				TestTypeGeneratorUtils.test_doctype_name_2,
+				TestTypeGeneratorUtils.test_doctype_name,
+				TestTypeGeneratorUtils.doctype_child_name,
+			],
+		)
+		self._assert_doctype_map(
+			map_path,
 			[
 				TestTypeGeneratorUtils.test_doctype_name_3,
 			],
