@@ -1,5 +1,6 @@
 import os
 import subprocess
+from enum import Enum
 from pathlib import Path
 
 import frappe
@@ -7,6 +8,12 @@ from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
 
 from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
+
+
+class TypeGenerationMethod(Enum):
+	DOCTYPES = "doctypes"
+	MODULES = "modules"
+	ALL_APPS = "all_apps"
 
 
 class TypeGenerator:
@@ -36,7 +43,8 @@ class TypeGenerator:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
 		self.custom_fields = custom_fields
-		self.did_generate_type_map = False
+		self.doctype_map = []
+		self.type_generation_method = None
 
 		settings = self._get_type_generation_settings()
 		base_output_path = settings.get("base_output_path")
@@ -56,6 +64,9 @@ class TypeGenerator:
 	# ---------------------------------------------------------------------
 	def generate_doctype(self, doctype: str):
 		"""Generate a `.ts` type definition file for a single DocType."""
+		if not self.type_generation_method:
+			self.type_generation_method = TypeGenerationMethod.DOCTYPES
+
 		try:
 			# custom_fields True means that the generate .ts file for custom fields with original fields
 			doc = frappe.get_meta(doctype) if self.custom_fields else frappe.get_doc("DocType", doctype)
@@ -69,8 +80,12 @@ class TypeGenerator:
 			module_path = self._get_module_path(self.app_name, module_name)
 			if module_path:
 				self._generate_type_definition_file(doc, module_path)
-				if not self.did_generate_type_map:
-					self.write_doctype_map()
+				# Accumulate this DocType for the map
+				ts_name = to_ts_type(doc.name)
+				module_dir = to_ts_type(module_name)
+				self.doctype_map.append((doc.name, ts_name, module_dir))
+				if self.type_generation_method == TypeGenerationMethod.DOCTYPES:
+					self._write_doctype_map()
 
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
@@ -78,6 +93,8 @@ class TypeGenerator:
 
 	def generate_module(self, module: str):
 		"""Generate type definition files for *all* DocTypes inside *module*."""
+		if not self.type_generation_method:
+			self.type_generation_method = TypeGenerationMethod.MODULES
 		try:
 			child_tables = [
 				doctype["name"]
@@ -96,8 +113,8 @@ class TypeGenerator:
 				for doctype in doctypes:
 					self.generate_doctype(doctype)
 
-				if not self.did_generate_type_map:
-					self.write_doctype_map()
+				if self.type_generation_method == TypeGenerationMethod.MODULES:
+					self._write_doctype_map()
 		except Exception as e:
 			err_msg = f": {e!s}\n{frappe.get_traceback()}"
 			print(f"An error occurred while generating type for {module} {err_msg}")
@@ -138,12 +155,13 @@ class TypeGenerator:
 				generate_child_tables=self.generate_child_tables,
 				custom_fields=self.custom_fields,
 			)
+			generator.type_generation_method = TypeGenerationMethod.ALL_APPS
 			modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": app_name})]
 			for module in modules:
 				generator.generate_module(module)
+				self.doctype_map.extend(generator.doctype_map)
 
-			# Reset the flag so next app can also export it's map
-			self.did_generate_type_map = False
+		self._write_doctype_map()
 
 	# ---------------------------------------------------------------------
 	# Private methods
@@ -427,7 +445,7 @@ class TypeGenerator:
 
 		return True
 
-	def write_doctype_map(self):
+	def _write_doctype_map(self):
 		"""Generate a TypeScript type mapping DocType names to TS interfaces."""
 		settings = self._get_type_generation_settings()
 		export_to_root = settings.get("export_to_root")
@@ -447,16 +465,10 @@ class TypeGenerator:
 				return
 			output_base = app_path / type_setting["app_path"] / "types"
 
-		# Collect doctypes for this app
-		dt_map = []
-		modules = [m["name"] for m in frappe.get_list("Module Def", filters={"app_name": self.app_name})]
-
-		for module in modules:
-			dts = [d["name"] for d in frappe.get_list("DocType", filters={"module": module})]
-			for dt in dts:
-				ts_name = to_ts_type(dt)
-				module_dir = to_ts_type(module)
-				dt_map.append((dt, ts_name, module_dir))
+		# Collect doctypes generated so far
+		dt_map = self.doctype_map
+		# Ensure unique entries
+		dt_map = list(set(dt_map))
 
 		# Build import statements
 		seen = set()
@@ -476,7 +488,7 @@ class TypeGenerator:
 		# Write file
 		map_file = output_base / "DocTypeMap.ts"
 		create_file(map_file, content)
-		self.did_generate_type_map = True
+		self.doctype_map = []
 
 
 # Should probably be renamed to `update_type_definition_file`

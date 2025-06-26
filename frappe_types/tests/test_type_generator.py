@@ -155,7 +155,6 @@ class TestTypeGenerator(FrappeTestCase):
 			os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.ts"),
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
-				TestTypeGeneratorUtils.test_doctype_name_2,
 			],
 		)
 
