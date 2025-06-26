@@ -1,23 +1,58 @@
 import ast
 from pathlib import Path
 
+# ─── Helpers for mapping Python annotations → TS types ─────────────────────────
+
+
+def map_py_type(node: ast.AST) -> str:
+	"""
+	Given an ast annotation node, return a TS type string.
+	Falls back to 'any' if unrecognized.
+	"""
+	if isinstance(node, ast.Name):
+		return {
+			"str": "string",
+			"int": "number",
+			"float": "number",
+			"bool": "boolean",
+			"dict": "Record<string, any>",
+			"list": "any[]",
+			"Any": "any",
+		}.get(node.id, "any")
+
+	# handles things like List[str], Optional[int], Dict[str, Any], etc.
+	if isinstance(node, ast.Subscript):
+		base = node.value
+		sub = node.slice
+		# List[T] ➔ T[]
+		if isinstance(base, ast.Name) and base.id in ("List", "list"):
+			elt = map_py_type(sub.value if hasattr(sub, "value") else sub)
+			return f"{elt}[]"
+		# Optional[T] ➔ T | undefined
+		if isinstance(base, ast.Name) and base.id in ("Optional",):
+			inner = map_py_type(sub.value if hasattr(sub, "value") else sub)
+			return f"{inner} | undefined"
+		# Dict[K, V] ➔ Record<K, V>
+		if isinstance(base, ast.Name) and base.id in ("Dict", "dict"):
+			# ignore key type, just V
+			val = map_py_type(sub.value.elts[1]) if hasattr(sub.value, "elts") else "any"
+			return f"Record<string, {val}>"
+	return "any"
+
+
+# ─── Visitor that also captures defaults ───────────────────────────────────────
+
 
 class WhitelistVisitor(ast.NodeVisitor):
 	def __init__(self):
 		self.current_class: str | None = None
-		self.whitelisted: set[str] = set()
+		# map full_path → list of (arg_name, ts_type, is_optional)
+		self.methods: dict[str, list[tuple[str, str, bool]]] = {}
 
 	def visit_ClassDef(self, node: ast.ClassDef):
-		prev = self.current_class
-		self.current_class = node.name
+		prev, self.current_class = self.current_class, node.name
 		self.generic_visit(node)
 		self.current_class = prev
-
-	def visit_FunctionDef(self, node: ast.FunctionDef):
-		# … your decorator logic …
-		pass
-
-	visit_AsyncFunctionDef = visit_FunctionDef  # alias
 
 	def visit_FunctionDef(self, node: ast.FunctionDef):
 		for deco in node.decorator_list:
@@ -28,50 +63,68 @@ class WhitelistVisitor(ast.NodeVisitor):
 				and target.value.id == "frappe"
 				and target.attr == "whitelist"
 			):
+				# determine TS-typed args
+				params: list[tuple[str, str, bool]] = []
+				# pair defaults to args from the end
+				defaults = (
+					{
+						node.args.args[-len(node.args.defaults) + i].arg: d
+						for i, d in enumerate(node.args.defaults)
+					}
+					if node.args.defaults
+					else {}
+				)
+
+				for arg in node.args.args:
+					if arg.arg == "self":
+						continue
+					ann = arg.annotation
+					ts_type = map_py_type(ann) if ann else "any"
+					is_opt = arg.arg in defaults
+					params.append((arg.arg, ts_type, is_opt))
+
 				name = node.name
 				if self.current_class:
 					name = f"{self.current_class}.{name}"
-				self.whitelisted.add(name)
+				self.methods[name] = params
 				break
 
-
-def extract_whitelisted(py_file: Path) -> set[str]:
-	src = py_file.read_text(encoding="utf-8")
-	tree = ast.parse(src, filename=str(py_file))
-	vis = WhitelistVisitor()
-	vis.visit(tree)
-	return vis.whitelisted
+	visit_AsyncFunctionDef = visit_FunctionDef
 
 
-def get_module_path(py_file: Path, base_dir: Path) -> str:
-	parts = list(py_file.relative_to(base_dir).with_suffix("").parts)
-	if parts and parts[-1] == "__init__":
-		parts.pop()
-	return ".".join(parts)
+# ─── Extraction, mapping to TS interface ──────────────────────────────────────
 
 
-def collect_all(dir_path: str) -> set[str]:
-	base = Path(dir_path)
-	all_paths: set[str] = set()
-	for py in base.rglob("*.py"):
-		module = get_module_path(py, base)
-		for fn in extract_whitelisted(py):
-			full = f"{module}.{fn}" if module else fn
-			all_paths.add(full)
-	return all_paths
+def extract_all(root: Path) -> dict[str, list[tuple[str, str, bool]]]:
+	res: dict[str, list[tuple[str, str, bool]]] = {}
+	for py in root.rglob("*.py"):
+		module = ".".join(py.relative_to(root).with_suffix("").parts).replace(".__init__", "")
+		vis = WhitelistVisitor()
+		vis.visit(ast.parse(py.read_text(), filename=str(py)))
+		for fn, args in vis.methods.items():
+			key = f"{module}.{fn}" if module else fn
+			res[key] = args
+	return res
 
 
-def write_ts_union(paths: set[str], out_ts: Path, type_name: str = "FrappeWhitelistedPaths"):
-	with out_ts.open("w", encoding="utf-8") as f:
-		f.write("// AUTO-GENERATED — do not edit by hand\n")
-		f.write(f"export type {type_name} =\n")
-		for p in sorted(paths):
-			f.write(f'  | "{p}"\n')
-		f.write(";\n")
+def write_interface(mapping: dict[str, list[tuple[str, str, bool]]], out: Path):
+	lines = ["// AUTO-GENERATED — do not edit by hand", "export interface FrappeWhitelistedPaths {"]
+	for path, params in sorted(mapping.items()):
+		if params:
+			lines.append(f'  "{path}": ' + "{")
+			for name, ts_type, is_opt in params:
+				opt = "?" if is_opt else ""
+				lines.append(f"    {name}{opt}: {ts_type};")
+			lines.append("  };")
+		else:
+			lines.append(f'  "{path}": {{}};')
+	lines.append("}")
+	out.write_text("\n".join(lines), encoding="utf-8")
+	print(f"Wrote interface with {len(mapping)} entries to {out}")
 
 
 if __name__ == "__main__":
-	root = "."
-	paths = collect_all(root)
-	write_ts_union(paths, Path("frappe-whitelist.d.ts"))
-	print(f"Wrote {len(paths)} paths into frappe-whitelist.d.ts")
+	ROOT = Path("../")
+	OUT = Path("frappe-whitelist-paths.ts")
+	mapping = extract_all(ROOT)
+	write_interface(mapping, OUT)
