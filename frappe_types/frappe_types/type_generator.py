@@ -505,7 +505,8 @@ class TypeGenerator:
 		imports = []
 		for _, ts_name, module_dir, app_name in dt_map:
 			if ts_name not in seen:
-				imports.append(f"import {{ {ts_name} }} from './{app_name}/{module_dir}/{ts_name}';\n")
+				path_prefix = f"{app_name}/" if export_to_root else ""
+				imports.append(f"import {{ {ts_name} }} from './{path_prefix}{module_dir}/{ts_name}';\n")
 				seen.add(ts_name)
 
 		# Build DocTypeMap type

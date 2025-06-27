@@ -255,11 +255,14 @@ class TestTypeGenerator(FrappeTestCase):
 		self.assertTrue(map_path.exists())
 		content = sanitize_content(map_path.read_text())
 		self.assertIn("declare global {\n  interface DocTypeMap {", content)
+		settings = frappe.get_single("Type Generation Settings")
+		export_to_root = settings.get("export_to_root")
 		for orig in doctypes:
+			path_prefix = f"{app_name}/" if export_to_root else ""
 			ts = to_ts_type(orig)
 			module_dir = to_ts_type(module)
 			expected_mapping = f'"{orig}": {ts};'
 			self.assertIn(expected_mapping, content)
-			expected_import = f"import {{ {ts} }} from './{app_name}/{module_dir}/{ts}';"
+			expected_import = f"import {{ {ts} }} from './{path_prefix}{module_dir}/{ts}';"
 			self.assertIn(expected_import, content)
 		self.assertIn("export {};", content)
