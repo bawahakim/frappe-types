@@ -89,7 +89,7 @@ class TypeGenerator:
 				# Accumulate this DocType for the map
 				ts_name = to_ts_type(doc.name)
 				module_dir = to_ts_type(module_name)
-				self.doctype_map.append((doc.name, ts_name, module_dir))
+				self.doctype_map.append((doc.name, ts_name, module_dir, self.app_name))
 				if self.type_generation_method == TypeGenerationMethod.DOCTYPES:
 					self._write_doctype_map()
 
@@ -294,7 +294,9 @@ class TypeGenerator:
 
 		interface_name = to_ts_type(doctype.name)
 		# DocType is a global interface defined in @frappe/types
-		lines: list[str] = [f"export interface {interface_name} extends DocType {{"]
+		lines: list[str] = [
+			f"export interface {interface_name} extends {(doctype.istable and 'DocTypeChildTable') or 'DocType'} {{"
+		]
 
 		# --- We override the name field to be consistent with the naming rule
 		name_type = "number" if doctype.naming_rule == "Autoincrement" else "string"
@@ -501,14 +503,14 @@ class TypeGenerator:
 		# Build import statements
 		seen = set()
 		imports = []
-		for _, ts_name, module_dir in dt_map:
+		for _, ts_name, module_dir, app_name in dt_map:
 			if ts_name not in seen:
-				imports.append(f"import {{ {ts_name} }} from './{module_dir}/{ts_name}';\n")
+				imports.append(f"import {{ {ts_name} }} from './{app_name}/{module_dir}/{ts_name}';\n")
 				seen.add(ts_name)
 
 		# Build DocTypeMap type
 		lines = ["declare global {\n  interface DocTypeMap {"]
-		for orig, ts_name, _ in dt_map:
+		for orig, ts_name, _, _ in dt_map:
 			lines.append(f'    "{orig}": {ts_name};')
 		lines.append("  }\n}\n")
 		lines.append("export {};")

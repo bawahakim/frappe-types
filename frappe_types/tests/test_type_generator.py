@@ -187,6 +187,7 @@ class TestTypeGenerator(FrappeTestCase):
 				TestTypeGeneratorUtils.test_doctype_name_3,
 			],
 			TestTypeGeneratorUtils.module_2,
+			TestTypeGeneratorUtils.app_name_2,
 		)
 
 		whitelist_methods_path_1 = (
@@ -236,6 +237,7 @@ class TestTypeGenerator(FrappeTestCase):
 				TestTypeGeneratorUtils.test_doctype_name_3,
 			],
 			TestTypeGeneratorUtils.module_2,
+			TestTypeGeneratorUtils.app_name_2,
 		)
 
 		whitelist_methods_path = (
@@ -244,7 +246,11 @@ class TestTypeGenerator(FrappeTestCase):
 		self.assertTrue(whitelist_methods_path.exists())
 
 	def _assert_doctype_map(
-		self, map_path: Path, doctypes: list[str], module: str = TestTypeGeneratorUtils.module
+		self,
+		map_path: Path,
+		doctypes: list[str],
+		module: str = TestTypeGeneratorUtils.module,
+		app_name: str = TestTypeGeneratorUtils.app_name,
 	):
 		self.assertTrue(map_path.exists())
 		content = sanitize_content(map_path.read_text())
@@ -254,6 +260,6 @@ class TestTypeGenerator(FrappeTestCase):
 			module_dir = to_ts_type(module)
 			expected_mapping = f'"{orig}": {ts};'
 			self.assertIn(expected_mapping, content)
-			expected_import = f"import {{ {ts} }} from './{module_dir}/{ts}';"
+			expected_import = f"import {{ {ts} }} from './{app_name}/{module_dir}/{ts}';"
 			self.assertIn(expected_import, content)
 		self.assertIn("export {};", content)
