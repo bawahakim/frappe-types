@@ -45,7 +45,9 @@
       "label": "Root Output Subdirectory",
       "description": "Root output subdirectory, so if 'types', will resolve to e.g. frappe-bench/types",
       "default": "types",
-      "dependencies": "export_to_root"
+      "depends_on": "export_to_root",
+      "reqd": 1,
+      "mandatory_depends_on": "export_to_root"
     }
   ],
   "index_web_pages_for_search": 1,
