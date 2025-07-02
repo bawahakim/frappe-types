@@ -5,8 +5,9 @@ from pathlib import Path
 import frappe
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
+from frappe.utils import get_bench_path
 
-from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
+from .utils import create_file, is_developer_mode_enabled, to_ts_type
 from .whitelist_methods_generator import extract_all, generate_interface, write_interface
 
 
@@ -39,6 +40,7 @@ class TypeGenerator:
 		*,
 		generate_child_tables: bool = False,
 		custom_fields: bool = False,
+		export_to_root: bool = False,
 	) -> None:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
@@ -49,21 +51,14 @@ class TypeGenerator:
 		settings = self._get_type_generation_settings()
 		self.export_to_root: bool = settings.get("export_to_root")
 		self.root_output_path: str = settings.get("root_output_path", "types")
-		base_output_path = settings.get("base_output_path")
+		base_output_path_settings = settings.get("base_output_path")
 
-		if base_output_path:
-			self.base_output_path = Path(base_output_path)
+		if base_output_path_settings:
+			self.base_output_path = Path(base_output_path_settings)
 		else:
-			self.base_output_path = get_bench_root_path()
+			self.base_output_path = Path(get_bench_path())
 			if not self.export_to_root:
 				self.base_output_path = self.base_output_path / "apps"
-
-		# should_export_to_root = settings.get("export_to_root")
-		# if not should_export_to_root and not base_output_path:
-		# 	self.base_output_path = get_bench_root_path() / "apps"
-
-		# if not hasattr(self, "base_output_path"):
-		# 	self.base_output_path = ""
 
 	# ---------------------------------------------------------------------
 	# Public API
