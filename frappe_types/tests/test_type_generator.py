@@ -1,5 +1,5 @@
 import os
-import shutil
+from pathlib import Path
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -62,7 +62,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
@@ -103,7 +103,7 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 				TestTypeGeneratorUtils.test_doctype_name_2,
@@ -152,20 +152,22 @@ class TestTypeGenerator(FrappeTestCase):
 			)
 
 		self._assert_doctype_map(
-			os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts"),
+			Path(TestTypeGeneratorUtils.temp_dir) / "types" / "DocTypeMap.d.ts",
 			[
 				TestTypeGeneratorUtils.test_doctype_name,
 			],
 		)
 
 	def test_export_all_apps(self):
+		TestTypeGeneratorUtils.generate_mock_whitelist_method_file()
+
 		generator = TypeGenerator(app_name="")
 		generator.export_all_apps()
 
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path_1 = os.path.join(TestTypeGeneratorUtils.get_types_output_base_path(), "DocTypeMap.d.ts")
+		map_path_1 = Path(TestTypeGeneratorUtils.get_types_output_base_path()) / "DocTypeMap.d.ts"
 		self._assert_doctype_map(
 			map_path_1,
 			[
@@ -175,9 +177,9 @@ class TestTypeGenerator(FrappeTestCase):
 			],
 		)
 
-		map_path_2 = os.path.join(
-			TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2),
-			"DocTypeMap.d.ts",
+		map_path_2 = (
+			Path(TestTypeGeneratorUtils.get_types_output_base_path(TestTypeGeneratorUtils.app_name_2))
+			/ "DocTypeMap.d.ts"
 		)
 		self._assert_doctype_map(
 			map_path_2,
@@ -185,7 +187,26 @@ class TestTypeGenerator(FrappeTestCase):
 				TestTypeGeneratorUtils.test_doctype_name_3,
 			],
 			TestTypeGeneratorUtils.module_2,
+			TestTypeGeneratorUtils.app_name_2,
 		)
+
+		whitelist_methods_path_1 = (
+			Path(TestTypeGeneratorUtils.temp_dir)
+			/ TestTypeGeneratorUtils.app_name
+			/ TestTypeGeneratorUtils.app_path_output_setting
+			/ "types"
+			/ "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path_1.exists())
+
+		whitelist_methods_path_2 = (
+			Path(TestTypeGeneratorUtils.temp_dir)
+			/ TestTypeGeneratorUtils.app_name_2
+			/ TestTypeGeneratorUtils.app_path_output_setting
+			/ "types"
+			/ "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path_2.exists())
 
 	def test_export_all_apps_to_root(self):
 		settings = frappe.get_single("Type Generation Settings")
@@ -193,13 +214,15 @@ class TestTypeGenerator(FrappeTestCase):
 		settings.root_output_path = "types"
 		settings.save()
 
+		TestTypeGeneratorUtils.generate_mock_whitelist_method_file()
+
 		generator = TypeGenerator(app_name="")
 		generator.export_all_apps()
 
 		for file_path in TestTypeGeneratorUtils.get_all_apps_output_file_paths():
 			self.assertTrue(os.path.exists(file_path))
 
-		map_path = os.path.join(TestTypeGeneratorUtils.temp_dir, "types", "DocTypeMap.d.ts")
+		map_path = Path(TestTypeGeneratorUtils.temp_dir) / "types" / "DocTypeMap.d.ts"
 		self._assert_doctype_map(
 			map_path,
 			[
@@ -214,19 +237,32 @@ class TestTypeGenerator(FrappeTestCase):
 				TestTypeGeneratorUtils.test_doctype_name_3,
 			],
 			TestTypeGeneratorUtils.module_2,
+			TestTypeGeneratorUtils.app_name_2,
 		)
 
+		whitelist_methods_path = (
+			Path(TestTypeGeneratorUtils.temp_dir) / "types" / "FrappeWhitelistedMethods.d.ts"
+		)
+		self.assertTrue(whitelist_methods_path.exists())
+
 	def _assert_doctype_map(
-		self, map_path: str, doctypes: list[str], module: str = TestTypeGeneratorUtils.module
+		self,
+		map_path: Path,
+		doctypes: list[str],
+		module: str = TestTypeGeneratorUtils.module,
+		app_name: str = TestTypeGeneratorUtils.app_name,
 	):
-		self.assertTrue(os.path.exists(map_path))
-		content = sanitize_content(open(map_path).read())
+		self.assertTrue(map_path.exists())
+		content = sanitize_content(map_path.read_text())
 		self.assertIn("declare global {\n  interface DocTypeMap {", content)
+		settings = frappe.get_single("Type Generation Settings")
+		export_to_root = settings.get("export_to_root")
 		for orig in doctypes:
+			path_prefix = f"{app_name}/" if export_to_root else ""
 			ts = to_ts_type(orig)
 			module_dir = to_ts_type(module)
 			expected_mapping = f'"{orig}": {ts};'
 			self.assertIn(expected_mapping, content)
-			expected_import = f"import {{ {ts} }} from './{module_dir}/{ts}';"
+			expected_import = f"import {{ {ts} }} from './{path_prefix}{module_dir}/{ts}';"
 			self.assertIn(expected_import, content)
 		self.assertIn("export {};", content)

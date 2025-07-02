@@ -108,6 +108,25 @@ class TestTypeGeneratorUtils:
 		return paths
 
 	@classmethod
+	def generate_mock_whitelist_method_file(cls):
+		file_with_whitelist_method = (
+			Path(TestTypeGeneratorUtils.temp_dir)
+			/ "apps"
+			/ TestTypeGeneratorUtils.app_name
+			/ TestTypeGeneratorUtils.module
+			/ "mod.py"
+		)
+		file_with_whitelist_method.parent.mkdir(parents=True, exist_ok=True)
+		file_with_whitelist_method.write_text(
+			"import frappe\n\n"
+			"class MyClass:\n"
+			"    @frappe.whitelist\n"
+			"    def method(self, x: bool):\n"
+			"        pass\n",
+			encoding="utf-8",
+		)
+
+	@classmethod
 	def _setup_modules(cls):
 		module_def = frappe.new_doc("Module Def")
 		module_def.update(

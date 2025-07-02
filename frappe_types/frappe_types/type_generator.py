@@ -1,4 +1,3 @@
-import os
 import subprocess
 from enum import Enum
 from pathlib import Path
@@ -6,8 +5,10 @@ from pathlib import Path
 import frappe
 from frappe.core.doctype.docfield.docfield import DocField
 from frappe.core.doctype.doctype.doctype import DocType
+from frappe.utils import get_bench_path
 
-from .utils import create_file, get_bench_root_path, is_developer_mode_enabled, to_ts_type
+from .utils import create_file, is_developer_mode_enabled, to_ts_type
+from .whitelist_methods_generator import extract_all, generate_interface, write_interface
 
 
 class TypeGenerationMethod(Enum):
@@ -39,6 +40,7 @@ class TypeGenerator:
 		*,
 		generate_child_tables: bool = False,
 		custom_fields: bool = False,
+		export_to_root: bool = False,
 	) -> None:
 		self.app_name = app_name
 		self.generate_child_tables = generate_child_tables
@@ -47,17 +49,16 @@ class TypeGenerator:
 		self.type_generation_method = None
 
 		settings = self._get_type_generation_settings()
-		base_output_path = settings.get("base_output_path")
-		if base_output_path:
-			self.base_output_path = base_output_path
+		self.export_to_root: bool = settings.get("export_to_root")
+		self.root_output_path: str = settings.get("root_output_path", "types")
+		base_output_path_settings = settings.get("base_output_path")
 
-		should_export_to_root = settings.get("export_to_root")
-		if not should_export_to_root and not base_output_path:
-			print("Setting base output path to '../apps'")
-			self.base_output_path = "../apps"
-
-		if not hasattr(self, "base_output_path"):
-			self.base_output_path = ""
+		if base_output_path_settings:
+			self.base_output_path = Path(base_output_path_settings)
+		else:
+			self.base_output_path = Path(get_bench_path())
+			if not self.export_to_root:
+				self.base_output_path = self.base_output_path / "apps"
 
 	# ---------------------------------------------------------------------
 	# Public API
@@ -83,7 +84,7 @@ class TypeGenerator:
 				# Accumulate this DocType for the map
 				ts_name = to_ts_type(doc.name)
 				module_dir = to_ts_type(module_name)
-				self.doctype_map.append((doc.name, ts_name, module_dir))
+				self.doctype_map.append((doc.name, ts_name, module_dir, self.app_name))
 				if self.type_generation_method == TypeGenerationMethod.DOCTYPES:
 					self._write_doctype_map()
 
@@ -147,7 +148,6 @@ class TypeGenerator:
 		"""Generate type definitions for all configured apps."""
 		settings = self._get_type_generation_settings()
 		type_settings = settings.get("type_settings", [])
-		export_to_root = settings.get("export_to_root")
 		for ts in type_settings:
 			app_name = ts["app_name"]
 			print(f"Generating type definitions for app {app_name}")
@@ -161,15 +161,49 @@ class TypeGenerator:
 			for module in modules:
 				generator.generate_module(module)
 
-			if export_to_root:
+			if self.export_to_root:
 				# accumulate doctypes for root map
 				self.doctype_map.extend(generator.doctype_map)
 			else:
 				# write per-app map
 				generator._write_doctype_map()
-		if export_to_root:
+		if self.export_to_root:
 			# write combined root map
 			self._write_doctype_map()
+
+		# Export whitelist methods interface
+		print("Generating whitelist methods interface")
+
+		out_file_name = "FrappeWhitelistedMethods.d.ts"
+
+		if not self.export_to_root:
+			# Write whitelist interface to bench root types directory
+			for ts in type_settings:
+				root = Path(self.base_output_path / ts["app_name"])
+				if root.exists():
+					out_dir = root / str(ts["app_path"]) / "types"
+					out_dir.mkdir(parents=True, exist_ok=True)
+					out_file = out_dir / out_file_name
+					generate_interface(root, out_file)
+				else:
+					print(f"Skipping whitelist generation for non-existent app path: {root}")
+			return
+
+		# Determine output directory for whitelist interface
+		out_dir = self.base_output_path / self.root_output_path
+		out_file = out_dir / out_file_name
+
+		# Use only apps specified in type_generation_settings
+		app_roots = [Path(self.base_output_path / "apps" / ts["app_name"]) for ts in type_settings]
+
+		# Aggregate whitelist methods mapping for configured apps
+		mapping: dict[str, list[tuple[str, str, bool]]] = {}
+		for root in app_roots:
+			if root.exists():
+				mapping.update(extract_all(root))
+			else:
+				print(f"Skipping whitelist generation for non-existent app path: {root}")
+		write_interface(mapping, out_file)
 
 	# ---------------------------------------------------------------------
 	# Private methods
@@ -204,24 +238,16 @@ class TypeGenerator:
 
 	def _get_module_path(self, app_name: str, module_name: str) -> Path | None:
 		"""Return the directory for type output. If export_to_root is set, always use the root types dir."""
-		settings = self._get_type_generation_settings()
-		if settings.get("export_to_root"):
+		if self.export_to_root:
 			# Determine root output path
-			root_path = settings.get("root_output_path", "types")
-			path_obj = Path(os.path.join(self.base_output_path, root_path, self.app_name))
-
-			# If relative, assume bench root
-			if not path_obj.is_absolute():
-				bench_root = get_bench_root_path()
-				path_obj = Path(os.path.join(bench_root, root_path))
-
+			path_obj = self.base_output_path / self.root_output_path / self.app_name
 			path_obj.mkdir(parents=True, exist_ok=True)
 			module_path = path_obj / to_ts_type(module_name)
 			module_path.mkdir(exist_ok=True)
 
 			return module_path
 
-		app_path = Path(self.base_output_path) / app_name
+		app_path = self.base_output_path / app_name
 		if not app_path.exists():
 			print("App path does not exist - ignoring type generation")
 			return None
@@ -263,7 +289,9 @@ class TypeGenerator:
 
 		interface_name = to_ts_type(doctype.name)
 		# DocType is a global interface defined in @frappe/types
-		lines: list[str] = [f"export interface {interface_name} extends DocType {{"]
+		lines: list[str] = [
+			f"export interface {interface_name} extends {(doctype.istable and 'DocTypeChildTable') or 'DocType'} {{"
+		]
 
 		# --- We override the name field to be consistent with the naming rule
 		name_type = "number" if doctype.naming_rule == "Autoincrement" else "string"
@@ -451,13 +479,10 @@ class TypeGenerator:
 		export_to_root = settings.get("export_to_root")
 		if export_to_root:
 			root_path = settings.get("root_output_path", "types")
-			base_path = Path(os.path.join(self.base_output_path, root_path))
-			if not base_path.is_absolute():
-				bench_root = get_bench_root_path()
-				base_path = Path(os.path.join(bench_root, root_path))
+			base_path = self.base_output_path / root_path
 			output_base = base_path
 		else:
-			app_path = Path(self.base_output_path) / self.app_name
+			app_path = self.base_output_path / self.app_name
 			type_settings = settings.get("type_settings", [])
 			type_setting = next((ts for ts in type_settings if ts["app_name"] == self.app_name), None)
 			if not type_setting:
@@ -473,14 +498,15 @@ class TypeGenerator:
 		# Build import statements
 		seen = set()
 		imports = []
-		for _, ts_name, module_dir in dt_map:
+		for _, ts_name, module_dir, app_name in dt_map:
 			if ts_name not in seen:
-				imports.append(f"import {{ {ts_name} }} from './{module_dir}/{ts_name}';\n")
+				path_prefix = f"{app_name}/" if export_to_root else ""
+				imports.append(f"import {{ {ts_name} }} from './{path_prefix}{module_dir}/{ts_name}';\n")
 				seen.add(ts_name)
 
 		# Build DocTypeMap type
 		lines = ["declare global {\n  interface DocTypeMap {"]
-		for orig, ts_name, _ in dt_map:
+		for orig, ts_name, _, _ in dt_map:
 			lines.append(f'    "{orig}": {ts_name};')
 		lines.append("  }\n}\n")
 		lines.append("export {};")
@@ -532,7 +558,9 @@ def after_migrate():
 
 
 @frappe.whitelist()
-def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, custom_fields=False):
+def generate_types_for_doctype(
+	doctype: str, app_name: str, generate_child_tables: bool = False, custom_fields: bool = False
+):
 	generator = TypeGenerator(
 		app_name,
 		generate_child_tables=generate_child_tables,
@@ -542,7 +570,7 @@ def generate_types_for_doctype(doctype, app_name, generate_child_tables=False, c
 
 
 @frappe.whitelist()
-def generate_types_for_module(module, app_name, generate_child_tables=False):
+def generate_types_for_module(module: str, app_name: str, generate_child_tables: bool = False):
 	generator = TypeGenerator(app_name, generate_child_tables=generate_child_tables)
 	generator.generate_module(module)
 

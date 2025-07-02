@@ -6,3 +6,5 @@ tags
 frappe_types/docs/current
 node_modules/
 .vscode/
+
+**/seed/seed.json

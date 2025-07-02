@@ -65,6 +65,19 @@ This CLI Command works for all frappe-bench apps, and can generate types of any 
   $ bench --site <site_name> generate-types-for-module
 ```
 
+3.  Generate types for all DocTypes.
+
+```bash
+ $ bench --site <site_name> generate-types
+```
+
+4. Configure Type Generation Settings
+```bash
+$ bench --site <site_name> import-type-gen-settings --file <path_to_file>
+```
+This will import settings from a JSON file, defaulting to `frappe_types/seed/seed.json`. You can use the schema declared in `frappe_types/seed/seed-schema.json` to validate the JSON file.
+
+
 Note: No need to mention --site <site_name> if current site is same site where module/doctype existed app installed in that site.
 
 1. `--app` - the app name included in `Type Generation Settings` doctype and where you want to save type files.

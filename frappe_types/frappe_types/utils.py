@@ -23,10 +23,3 @@ def is_developer_mode_enabled():
 
 def to_ts_type(fieldtype: str) -> str:
 	return fieldtype.replace(" ", "")
-
-
-def get_bench_root_path():
-	"""Get the root path of the bench directory."""
-	any_app = frappe.get_installed_apps()[0]
-	app_path = Path(frappe.get_app_path(any_app))
-	return app_path.parents[2]

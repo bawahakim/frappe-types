@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://example.com/frappe/single-settings.schema.json",
+    "title": "Frappe Single DocType: Type Generation Settings",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "Schema reference for tooling like VS Code"
+        },
+        "doctype": {
+            "const": "Type Generation Settings"
+        },
+        "include_custom_doctypes": {
+            "type": "integer",
+            "enum": [0, 1]
+        },
+        "base_output_path": {
+            "type": "string"
+        },
+        "export_to_root": {
+            "type": "integer",
+            "enum": [0, 1]
+        },
+        "root_output_path": {
+            "type": "string"
+        },
+        "type_settings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["app_name", "app_path"],
+                "properties": {
+                    "app_name": {
+                        "type": "string"
+                    },
+                    "app_path": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": ["doctype", "root_output_path", "type_settings"],
+    "additionalProperties": false
+}
