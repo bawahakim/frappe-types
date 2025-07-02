@@ -1,0 +1,11 @@
+{
+    "$schema": "./seed-schema.json",
+    "doctype": "Type Generation Settings",
+    "root_output_path": "types",
+    "export_to_root": 1,
+    "include_custom_doctypes": 0,
+    "type_settings": [
+        { "app_name": "frappe", "app_path": "src" },
+        { "app_name": "erpnext", "app_path": "src" }
+    ]
+}
